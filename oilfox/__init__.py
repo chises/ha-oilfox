@@ -1,0 +1,1 @@
+"""The oilfox component."""

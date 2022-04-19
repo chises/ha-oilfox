@@ -1,0 +1,10 @@
+{
+  "domain": "oilfox",
+  "name": "OilFox",
+  "documentation": "https://github.com/chises/ha-oilfox",
+  "requirements": [],
+  "codeowners": ["@chises"],
+  "iot_class": "cloud_polling",
+  "loggers": ["oilfox_component"],
+  "version": "0.0.1"
+}
