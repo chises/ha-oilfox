@@ -17,13 +17,17 @@ sensor:
     password: "<your password>"
 ```
 ## Result
-After installing the component and configure the sensor new entities will be added. Something like *sensor.oilfox_<hadwareid>_<sensor>
+After installing the component and configure the sensor new entities will be added. Something like *sensor.oilfox_hadwareid_sensor*
+
 Multiple Devices on the OilFox account are supported.
 
-![image](https://user-images.githubusercontent.com/10805806/164026064-9a6412e5-19fe-46d3-b9d7-ea4f1627ec21.png)
+  ![image](https://user-images.githubusercontent.com/10805806/164910584-723ca9ff-d8d0-43ef-b14a-e5239d1ca411.png)
+
+  ![image](https://user-images.githubusercontent.com/10805806/164910553-02410e6b-7271-4b3f-bf0e-56485a0d3d8f.png)
 
 
-## background
+
+## Background
 This component is using the official [OilFox customer Api](https://github.com/foxinsights/customer-api)
 
 As this is my first homeassistant component there is a lot to impove. If I have time I will try to get this component more to the [homeassisant recommendations](https://developers.home-assistant.io/docs/creating_component_code_review/)
