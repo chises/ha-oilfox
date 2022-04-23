@@ -1,7 +1,7 @@
 # ha-oilfox
 HomeAssistant Sensor for OilFox using the official customer API.
 
-In my Setup (Home Assistant 2022.4.5 with core-2022.4.5) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
+In my Setup (Home Assistant 2022.4.6 with core-2022.4.6) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
 
 If you habe some problems or ideas just let me know!
 
@@ -17,8 +17,8 @@ sensor:
     password: "<your password>"
 ```
 ## Result
-After installing the component and configure the sensor a new entity will be added. Something like *sensor.oilfox_<hadwareid>*
-If you have multiple OilFox connected to a single account a entity for every OilFox will be created.
+After installing the component and configure the sensor new entities will be added. Something like *sensor.oilfox_<hadwareid>_<sensor>
+Multiple Devices on the OilFox account are supported.
 
 ![image](https://user-images.githubusercontent.com/10805806/164026064-9a6412e5-19fe-46d3-b9d7-ea4f1627ec21.png)
 
