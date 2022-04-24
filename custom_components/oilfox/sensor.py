@@ -1,6 +1,10 @@
 """Platform for sensor integration."""
 
 from __future__ import annotations
+from datetime import timedelta
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -13,10 +17,6 @@ from homeassistant.const import (
     TIME_DAYS
 )
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
 import requests
 import logging
 import time  
@@ -28,6 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "OilFox_api"
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
+SCAN_INTERVAL = timedelta(minutes=10)
 
 SENSORS = {
     "fillLevelPercent": [
@@ -79,7 +80,7 @@ def setup_platform(
             else:
                 _LOGGER.info("OilFox: Device "+item['hwid']+" missing sensor "+SENSORS[key][0])
 
-    add_entities(entities)
+    add_entities(entities, True)
 
 class OilFoxSensor(SensorEntity):
     OilFox = None
@@ -96,6 +97,11 @@ class OilFoxSensor(SensorEntity):
     def icon(self) -> str:
         """Return the name of the sensor."""
         return self.sensor[2]
+
+    @property
+    def unique_id(self) -> str:
+        """Return the name of the sensor."""
+        return "OilFox-"+self.OilFox.hwid+"-"+self.sensor[0]
 
     @property
     def name(self) -> str:
@@ -115,7 +121,6 @@ class OilFoxSensor(SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the attributes of the sensor."""
-        #additional_attributes={ }
         additional_attributes={
             "Last Measurement": self.OilFox.state.get("currentMeteringAt"),
             "Next Measurement": self.OilFox.state.get("nextMeteringAt"),
@@ -124,7 +129,7 @@ class OilFoxSensor(SensorEntity):
         return additional_attributes
 
     def update(self) -> None:
-        #self.OilFox.updateStats()
+        self.OilFox.updateStats()
         if not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:        
             self._state = self.OilFox.state.get(self.sensor[0])
         else:
