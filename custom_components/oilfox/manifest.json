@@ -7,5 +7,5 @@
   "codeowners": ["@chises"],
   "iot_class": "cloud_polling",
   "loggers": ["oilfox_component"],
-  "version": "0.0.3"
+  "version": "0.0.4"
 }

@@ -29,6 +29,7 @@ DOMAIN = "OilFox_api"
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
 SCAN_INTERVAL = timedelta(minutes=10)
+TOKEN_VALID = 900
 
 SENSORS = {
     "fillLevelPercent": [
@@ -129,8 +130,9 @@ class OilFoxSensor(SensorEntity):
         return additional_attributes
 
     def update(self) -> None:
-        self.OilFox.updateStats()
-        if not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:        
+        if self.OilFox.updateStats()  == False:
+            _LOGGER.info("OilFox: Error Updating Values from Class!:"+str(self.OilFox.state))
+        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:        
             self._state = self.OilFox.state.get(self.sensor[0])
         else:
             _LOGGER.info("OilFox: Error Updating Values!:"+str(self.OilFox.state))
@@ -176,7 +178,7 @@ class OilFox:
     update_token = None
     loginUrl = "https://api.oilfox.io/customer-api/v1/login"
     deviceUrl = "https://api.oilfox.io/customer-api/v1/device/"
-    tokenUrl = "https://api.oilfox.io/customer-api/v1/token?refresh_token="
+    tokenUrl = "https://api.oilfox.io/customer-api/v1/token"
 
     def __init__(self,email, password, hwid):
         self.email = email
@@ -190,8 +192,9 @@ class OilFox:
         if self.refresh_token is None:
             error = self.getTokens()
         
-        if int(time.time())-self.update_token > 800:
+        if int(time.time())-self.update_token > TOKEN_VALID:
             error = self.getAccessToken()
+            return True
         
         if not error:
             headers = { 'Authorization': "Bearer " + self.access_token }
@@ -199,6 +202,7 @@ class OilFox:
             if response.status_code == 200:
                 self.state = response.json()
                 return True
+        _LOGGER.info("Error in Update Access Token")
         return False
 
     def getTokens(self):
@@ -217,12 +221,15 @@ class OilFox:
         
         return False
 
-    def getAccessToken(self):
-        headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-        response = requests.get(self.tokenUrl+self.refresh_token, headers=headers)
+    def getAccessToken(self):  
+        data = {
+            'refresh_token': self.refresh_token,
+        }
+        response = requests.post(self.tokenUrl, data=data)
         if response.status_code == 200:
             self.access_token = response.json()['access_token']
             self.refresh_token = response.json()['refresh_token']
             self.update_token = int(time.time())
             return True
+        _LOGGER.info("Update Access Token: failed")
         return False
