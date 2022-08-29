@@ -49,6 +49,11 @@ SENSORS = {
         "batteryLevel",
         PERCENTAGE,
         "mdi:battery"
+    ],
+    "validationError": [
+        "validationError",
+        None,
+        "mdi:message-alert"
     ]
 }
 
@@ -71,7 +76,7 @@ def setup_platform(
 
     OilFoxs_items = OilFoxApiWrapper(email,password).getItems()
     if OilFoxs_items == False:
-        _LOGGER.info("OilFox: Could not fetch information through API, invalid credentials?")
+        _LOGGER.error("OilFox: Could not fetch information through API, invalid credentials?")
         return False
 
     entities = [ ]
@@ -80,6 +85,10 @@ def setup_platform(
         for key in SENSORS.keys():
             if not item.get(key) == None:
                 _LOGGER.info("OilFox: Create Sensor "+SENSORS[key][0]+" for Device"+item['hwid'])
+                entities.append(OilFoxSensor(OilFox(email, password, item['hwid']),SENSORS[key]))
+            elif key == "validationError":
+                _LOGGER.info("OilFox: Create empty Sensor "+SENSORS[key][0]+" for Device"+item['hwid'])
+                SENSORS["validationError"][0]="validationError"
                 entities.append(OilFoxSensor(OilFox(email, password, item['hwid']),SENSORS[key]))
             else:
                 _LOGGER.info("OilFox: Device "+item['hwid']+" missing sensor "+SENSORS[key][0])
@@ -97,6 +106,17 @@ class OilFoxSensor(SensorEntity):
         "MEDIUM": 50,
         "WARNING": 20,
         "CRITICAL": 0
+    }
+    validationError_mapping = {
+        "NO_METERING": "No measurement yet",
+        "EMPTY_METERING": "Incorrect Measurement",
+        "NO_EXTRACTED_VALUE": "No fill level detected",
+        "SENSOR_CONFIG": "Faulty measurement",
+        "MISSING_STORAGE_CONFIG":"Storage configuration missing",
+        "INVALID_STORAGE_CONFIG": "Incorrect storage configuration",
+        "DISTANCE_TOO_SHORT": "Measured distance too small",
+        "ABOVE_STORAGE_MAX": "Storage full",
+        "BELOW_STORAGE_MIN": "Calculated filling level implausible"
     }
 
     def __init__(self, element, sensor):
@@ -141,16 +161,20 @@ class OilFoxSensor(SensorEntity):
         return additional_attributes
 
     def update(self) -> None:
-        #_LOGGER.info("OilFox: Update values!")
         if self.OilFox.updateStats() == False:
-            _LOGGER.info("OilFox: Error Updating Values from Class!:"+str(self.OilFox.state))
-        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:       
+            _LOGGER.error("OilFox: Error Updating Values for "+self.sensor[0]+" from Class!:"+str(self.OilFox.state))
+        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:   
+            _LOGGER.debug("OilFox: Update Values for "+self.sensor[0])    
             if self.sensor[0] == "batteryLevel":
                 self._state = self.battery_mapping[self.OilFox.state.get(self.sensor[0])]
+            elif self.sensor[0] == "validationError":
+                self._state = self.validationError_mapping[self.OilFox.state.get(self.sensor[0])] 
             else:
                 self._state = self.OilFox.state.get(self.sensor[0])
+        elif self.sensor[0] == "validationError":
+            self._state = "No Error"
         else:
-            _LOGGER.info("OilFox: Error Updating Values!:"+str(self.OilFox.state))
+            _LOGGER.error("OilFox: Error Updating Values!:"+str(self.sensor)+" "+str(self.OilFox.state))
 
 
 
@@ -204,16 +228,16 @@ class OilFox:
         self.getTokens()
     
     def updateStats(self):
-        error = False
+        notError = True
         if self.refresh_token is None:
-            error = self.getTokens()
-            _LOGGER.info("Update Refresh Token: "+str(error))
+            notError = self.getTokens()
+            _LOGGER.debug("Update Refresh Token: "+str(notError))
         
         if int(time.time())-self.update_token > TOKEN_VALID:
-            error = self.getAccessToken()
-            _LOGGER.info("Update Access Token: "+str(error))
+            notError = self.getAccessToken()
+            _LOGGER.debug("Update Access Token: "+str(notError))
         
-        if not error:
+        if notError:
             headers = { 'Authorization': "Bearer " + self.access_token }
             response = requests.get(self.deviceUrl+self.hwid, headers=headers)
             if response.status_code == 200:
@@ -234,7 +258,7 @@ class OilFox:
             self.refresh_token = response.json()['refresh_token']
             self.update_token = int(time.time())
             return True
-        _LOGGER.info("Get Refresh Token: failed")
+        _LOGGER.error("Get Refresh Token: failed")
         return False
 
     def getAccessToken(self):  
@@ -247,5 +271,5 @@ class OilFox:
             self.refresh_token = response.json()['refresh_token']
             self.update_token = int(time.time())
             return True
-        _LOGGER.info("Get Access Token: failed")
+        _LOGGER.error("Get Access Token: failed")
         return False
