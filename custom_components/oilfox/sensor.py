@@ -24,13 +24,11 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
-
 DOMAIN = "OilFox_api"
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
 SCAN_INTERVAL = timedelta(minutes=10)
 TOKEN_VALID = 900
-
 SENSORS = {
     "fillLevelPercent": [
         "fillLevelPercent",
@@ -47,6 +45,11 @@ SENSORS = {
         TIME_DAYS,
         "mdi:calendar-range",
     ],
+    "batteryLevel": [
+        "batteryLevel",
+        PERCENTAGE,
+        "mdi:battery"
+    ]
 }
 
 # Validation of the user's configuration
@@ -68,7 +71,7 @@ def setup_platform(
 
     OilFoxs_items = OilFoxApiWrapper(email,password).getItems()
     if OilFoxs_items == False:
-        _LOGGER.info("OilFox: Could not fetch informationn through API, invalid credentials?")
+        _LOGGER.info("OilFox: Could not fetch information through API, invalid credentials?")
         return False
 
     entities = [ ]
@@ -83,12 +86,20 @@ def setup_platform(
 
     add_entities(entities, True)
 
+
+
 class OilFoxSensor(SensorEntity):
     OilFox = None
     sensor = None
+    battery_mapping = {
+        "FULL": 100,
+        "GOOD": 70,
+        "MEDIUM": 50,
+        "WARNING": 20,
+        "CRITICAL": 0
+    }
 
     def __init__(self, element, sensor):
-
         self.sensor = sensor
         self.OilFox = element
         self.OilFox.updateStats()
@@ -130,12 +141,17 @@ class OilFoxSensor(SensorEntity):
         return additional_attributes
 
     def update(self) -> None:
-        if self.OilFox.updateStats()  == False:
+        #_LOGGER.info("OilFox: Update values!")
+        if self.OilFox.updateStats() == False:
             _LOGGER.info("OilFox: Error Updating Values from Class!:"+str(self.OilFox.state))
-        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:        
-            self._state = self.OilFox.state.get(self.sensor[0])
+        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:       
+            if self.sensor[0] == "batteryLevel":
+                self._state = self.battery_mapping[self.OilFox.state.get(self.sensor[0])]
+            else:
+                self._state = self.OilFox.state.get(self.sensor[0])
         else:
             _LOGGER.info("OilFox: Error Updating Values!:"+str(self.OilFox.state))
+
 
 
 class OilFoxApiWrapper:
@@ -191,10 +207,11 @@ class OilFox:
         error = False
         if self.refresh_token is None:
             error = self.getTokens()
+            _LOGGER.info("Update Refresh Token: "+str(error))
         
         if int(time.time())-self.update_token > TOKEN_VALID:
             error = self.getAccessToken()
-            return True
+            _LOGGER.info("Update Access Token: "+str(error))
         
         if not error:
             headers = { 'Authorization': "Bearer " + self.access_token }
@@ -202,7 +219,6 @@ class OilFox:
             if response.status_code == 200:
                 self.state = response.json()
                 return True
-        _LOGGER.info("Error in Update Access Token")
         return False
 
     def getTokens(self):
@@ -218,7 +234,7 @@ class OilFox:
             self.refresh_token = response.json()['refresh_token']
             self.update_token = int(time.time())
             return True
-        
+        _LOGGER.info("Get Refresh Token: failed")
         return False
 
     def getAccessToken(self):  
@@ -231,5 +247,5 @@ class OilFox:
             self.refresh_token = response.json()['refresh_token']
             self.update_token = int(time.time())
             return True
-        _LOGGER.info("Update Access Token: failed")
+        _LOGGER.info("Get Access Token: failed")
         return False
