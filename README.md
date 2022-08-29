@@ -1,7 +1,7 @@
 # ha-oilfox
 HomeAssistant Sensor for OilFox using the official customer API.
 
-In my Setup (Home Assistant 2022.4.6 with core-2022.4.6) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
+In my Setup (Home Assistant 2022.8.7) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
 
 If you habe some problems or ideas just let me know!
 
@@ -25,7 +25,16 @@ Multiple Devices on the OilFox account are supported.
 
   ![image](https://user-images.githubusercontent.com/10805806/164910553-02410e6b-7271-4b3f-bf0e-56485a0d3d8f.png)
 
-
+## Battery Entity
+The [API](https://github.com/foxinsights/customer-api/tree/main/docs/v1) only provides text based battery status. In order to convert them into some numeric values I used the following mapping:
+```
+FULL = 100%
+GOOD = 70%
+MEDIUM = 50%
+WARNING" = 20%
+CRITICAL = 0%
+```
+These values should work with [Low battery level detection & notification for all battery sensors](https://community.home-assistant.io/t/low-battery-level-detection-notification-for-all-battery-sensors/258664).
 
 ## Background
 This component is using the official [OilFox customer Api](https://github.com/foxinsights/customer-api)
