@@ -25,6 +25,16 @@ Multiple Devices on the OilFox account are supported.
 
   ![image](https://user-images.githubusercontent.com/10805806/164910553-02410e6b-7271-4b3f-bf0e-56485a0d3d8f.png)
 
+## Logging
+For debug log messages you need to adjust the log config for custom_components.oilfox.sensor based on the [HA documentation](https://www.home-assistant.io/integrations/logger/)
+Example configuration.yaml
+```
+logger:
+  default: info
+  logs:
+    custom_components.oilfox.sensor: debug
+```
+
 ## Battery Entity
 The [API](https://github.com/foxinsights/customer-api/tree/main/docs/v1) only provides text based battery status. In order to convert them into some numeric values I used the following mapping:
 ```
