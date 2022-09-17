@@ -1,11 +1,18 @@
 {
   "domain": "oilfox",
   "name": "OilFox",
+  "config_flow": true,
   "documentation": "https://github.com/chises/ha-oilfox",
   "issue_tracker": "https://github.com/chises/ha-oilfox/issues",
-  "requirements": [],
-  "codeowners": ["@chises"],
+  "requirements": ["aiohttp"],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@chises"
+  ],
   "iot_class": "cloud_polling",
   "loggers": ["oilfox_component"],
-  "version": "0.0.6"
+  "version": "0.1.0"
 }

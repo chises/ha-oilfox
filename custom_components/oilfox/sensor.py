@@ -1,34 +1,32 @@
 """Platform for sensor integration."""
 
 from __future__ import annotations
-from datetime import timedelta
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
-from homeassistant.components.sensor import (
-    SensorEntity,
-    PLATFORM_SCHEMA
-)
-
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.const import (
     PERCENTAGE,
     VOLUME_LITERS,
-    TIME_DAYS
+    TIME_DAYS,
+    EVENT_HOMEASSISTANT_START,
 )
-
-import requests
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+)
 import logging
-import time  
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
+from .const import DOMAIN, CONF_EMAIL, CONF_PASSWORD
+from .OilFox import OilFox
+
 _LOGGER = logging.getLogger(__name__)
-DOMAIN = "OilFox_api"
-CONF_EMAIL = "email"
-CONF_PASSWORD = "password"
-SCAN_INTERVAL = timedelta(minutes=10)
-TOKEN_VALID = 900
+
 SENSORS = {
     "fillLevelPercent": [
         "fillLevelPercent",
@@ -45,85 +43,159 @@ SENSORS = {
         TIME_DAYS,
         "mdi:calendar-range",
     ],
-    "batteryLevel": [
-        "batteryLevel",
-        PERCENTAGE,
-        "mdi:battery"
-    ],
-    "validationError": [
-        "validationError",
-        None,
-        "mdi:message-alert"
-    ]
+    "batteryLevel": ["batteryLevel", PERCENTAGE, "mdi:battery"],
+    "validationError": ["validationError", None, "mdi:message-alert"],
 }
 
 # Validation of the user's configuration
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_EMAIL): cv.string,
-    vol.Required(CONF_PASSWORD): cv.string,
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Required(CONF_EMAIL): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
+    }
+)
 
-def setup_platform(
+
+async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up the sensor platform."""
-    email = config[CONF_EMAIL]
-    _LOGGER.info("OilFox: Setup User:"+email)
-    password = config[CONF_PASSWORD] 
+    """Set up certificate expiry sensor."""
 
-    OilFoxs_items = OilFoxApiWrapper(email,password).getItems()
-    if OilFoxs_items == False:
-        _LOGGER.error("OilFox: Could not fetch information through API, invalid credentials?")
+    @callback
+    def schedule_import(_):
+        """Schedule delayed import after HA is fully started."""
+        async_call_later(hass, 10, do_import)
+
+    @callback
+    def do_import(_):
+        """Process YAML import."""
+        _LOGGER.warning("Import yaml configration settings into config flow")
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=dict(config)
+            )
+        )
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, schedule_import)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialize OilFox Integration config entry."""
+    _LOGGER.info("OilFox: Setup User: %s", config_entry.data[CONF_EMAIL])
+    email = config_entry.data[CONF_EMAIL]
+    password = config_entry.data[CONF_PASSWORD]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+
+    oilfox_items = coordinator.data["items"]
+    if not oilfox_items:
+        _LOGGER.error(
+            "OilFox: Could not fetch information through API, invalid credentials?"
+        )
         return False
 
-    entities = [ ]
-    for item in OilFoxs_items:
-        _LOGGER.info("OilFox: Found Device in API:"+item['hwid'])
-        for key in SENSORS.keys():
-            if not item.get(key) == None:
-                _LOGGER.info("OilFox: Create Sensor "+SENSORS[key][0]+" for Device"+item['hwid'])
-                entities.append(OilFoxSensor(OilFox(email, password, item['hwid']),SENSORS[key]))
-            elif key == "validationError":
-                _LOGGER.info("OilFox: Create empty Sensor "+SENSORS[key][0]+" for Device"+item['hwid'])
-                SENSORS["validationError"][0]="validationError"
-                entities.append(OilFoxSensor(OilFox(email, password, item['hwid']),SENSORS[key]))
+    entities = []
+    for item in oilfox_items:
+        _LOGGER.info("OilFox: Found Device in API: %s", item["hwid"])
+        for sensor in SENSORS.items():
+            _LOGGER.debug(
+                "OilFox: Create Sensor %s for Device %s",
+                sensor[0],
+                item["hwid"],
+            )
+            oilfox_sensor = OilFoxSensor(
+                coordinator, OilFox(email, password, item["hwid"]), sensor[1]
+            )
+
+            oilfox_sensor.set_api_response(coordinator.data["items"][0])
+            if sensor[0] in coordinator.data["items"][0]:
+                _LOGGER.debug(
+                    "Prefill entity %s with %s",
+                    sensor[0],
+                    coordinator.data["items"][0][sensor[0]],
+                )
+                oilfox_sensor.set_state(coordinator.data["items"][0][sensor[0]])
             else:
-                _LOGGER.info("OilFox: Device "+item['hwid']+" missing sensor "+SENSORS[key][0])
+                _LOGGER.debug(
+                    "Initialize entity %s with empty value",
+                    sensor[0],
+                )
+                oilfox_sensor.set_state("")
+            entities.append(oilfox_sensor)
+    async_add_entities(entities)
 
-    add_entities(entities, True)
 
+class OilFoxSensor(CoordinatorEntity, SensorEntity):
+    """OilFox Sensor Class"""
 
-
-class OilFoxSensor(SensorEntity):
-    OilFox = None
+    api_response = None
+    oilfox = None
     sensor = None
     battery_mapping = {
         "FULL": 100,
         "GOOD": 70,
         "MEDIUM": 50,
         "WARNING": 20,
-        "CRITICAL": 0
+        "CRITICAL": 0,
     }
     validationError_mapping = {
         "NO_METERING": "No measurement yet",
         "EMPTY_METERING": "Incorrect Measurement",
         "NO_EXTRACTED_VALUE": "No fill level detected",
         "SENSOR_CONFIG": "Faulty measurement",
-        "MISSING_STORAGE_CONFIG":"Storage configuration missing",
+        "MISSING_STORAGE_CONFIG": "Storage configuration missing",
         "INVALID_STORAGE_CONFIG": "Incorrect storage configuration",
         "DISTANCE_TOO_SHORT": "Measured distance too small",
         "ABOVE_STORAGE_MAX": "Storage full",
-        "BELOW_STORAGE_MIN": "Calculated filling level implausible"
+        "BELOW_STORAGE_MIN": "Calculated filling level implausible",
     }
 
-    def __init__(self, element, sensor):
+    def __init__(self, coordinator, element, sensor):
+        super().__init__(coordinator)
+
         self.sensor = sensor
-        self.OilFox = element
-        self.OilFox.updateStats()
+        self.oilfox = element
         self._state = None
+        self.api_response = {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        for data in self.coordinator.data["items"]:
+            if data["hwid"] == self.oilfox.hwid:
+                self.api_response = data
+                my_data = ""
+                if self.sensor[0] in data:
+                    if self.sensor[0] == "batteryLevel":
+                        my_data = self.battery_mapping[data[self.sensor[0]]]
+                    else:
+                        my_data = data[self.sensor[0]]
+
+                _LOGGER.debug(
+                    "Update entity %s for HWID %s with value: %s",
+                    self.sensor[0],
+                    self.oilfox.hwid,
+                    my_data,
+                )
+                self._state = my_data
+                self.async_write_ha_state()
+
+    def set_api_response(self, response):
+        """Set API response manual"""
+        self.api_response = response
+
+    def set_state(self, state):
+        """Set state manual"""
+        if self.sensor[0] == "batteryLevel":
+            self._state = self.battery_mapping[state]
+        else:
+            self._state = state
 
     @property
     def icon(self) -> str:
@@ -133,15 +205,15 @@ class OilFoxSensor(SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return the name of the sensor."""
-        return "OilFox-"+self.OilFox.hwid+"-"+self.sensor[0]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
 
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return "OilFox-"+self.OilFox.hwid+"-"+self.sensor[0]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
 
     @property
-    def state(self):
+    def state(self) -> str:
         """Return the state of the sensor."""
         return self._state
 
@@ -153,123 +225,9 @@ class OilFoxSensor(SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the attributes of the sensor."""
-        additional_attributes={
-            "Last Measurement": self.OilFox.state.get("currentMeteringAt"),
-            "Next Measurement": self.OilFox.state.get("nextMeteringAt"),
-            "Battery": self.OilFox.state.get("batteryLevel")
+        additional_attributes = {
+            "Last Measurement": self.api_response.get("currentMeteringAt"),
+            "Next Measurement": self.api_response.get("nextMeteringAt"),
+            "Battery": self.api_response.get("batteryLevel"),
         }
         return additional_attributes
-
-    def update(self) -> None:
-        if self.OilFox.updateStats() == False:
-            _LOGGER.error("OilFox: Error Updating Values for "+self.sensor[0]+" from Class!:"+str(self.OilFox.state))
-        elif not self.OilFox.state == None and not self.OilFox.state.get(self.sensor[0]) == None:   
-            _LOGGER.debug("OilFox: Update Values for "+self.sensor[0])    
-            if self.sensor[0] == "batteryLevel":
-                self._state = self.battery_mapping[self.OilFox.state.get(self.sensor[0])]
-            elif self.sensor[0] == "validationError":
-                self._state = self.validationError_mapping[self.OilFox.state.get(self.sensor[0])] 
-            else:
-                self._state = self.OilFox.state.get(self.sensor[0])
-        elif self.sensor[0] == "validationError":
-            self._state = "No Error"
-        else:
-            _LOGGER.error("OilFox: Error Updating Values!:"+str(self.sensor)+" "+str(self.OilFox.state))
-
-
-
-class OilFoxApiWrapper:
-    ## Wrapper to collect all Devices attached to the Account and Create OilFox 
-    loginUrl = "https://api.oilfox.io/customer-api/v1/login"
-    deviceUrl = "https://api.oilfox.io/customer-api/v1/device"
-    
-    def __init__(self, email, password):
-        self.email = email
-        self.password = password
-        
-    def getItems(self):
-        items = [ ]
-        headers = { 'Content-Type': 'application/json' }
-        json_data = {
-            'password': self.password,
-            'email': self.email,
-        }
-
-        response = requests.post(self.loginUrl, headers=headers, json=json_data)
-        if response.status_code == 200:
-            self.access_token = response.json()['access_token']
-            self.refresh_token = response.json()['refresh_token']
-            headers = { 'Authorization': "Bearer " + self.access_token }
-            response = requests.get(self.deviceUrl, headers=headers)
-            if response.status_code == 200:
-                items = response.json()['items']
-                return items
-        return False
-
-        
-
-class OilFox:
-    #https://github.com/foxinsights/customer-api
-    hwid = None
-    password = None
-    email = None
-    access_token = None
-    refresh_token = None
-    update_token = None
-    loginUrl = "https://api.oilfox.io/customer-api/v1/login"
-    deviceUrl = "https://api.oilfox.io/customer-api/v1/device/"
-    tokenUrl = "https://api.oilfox.io/customer-api/v1/token"
-
-    def __init__(self,email, password, hwid):
-        self.email = email
-        self.password = password
-        self.hwid = hwid
-        self.state = None
-        self.getTokens()
-    
-    def updateStats(self):
-        notError = True
-        if self.refresh_token is None:
-            notError = self.getTokens()
-            _LOGGER.debug("Update Refresh Token: "+str(notError))
-        
-        if int(time.time())-self.update_token > TOKEN_VALID:
-            notError = self.getAccessToken()
-            _LOGGER.debug("Update Access Token: "+str(notError))
-        
-        if notError:
-            headers = { 'Authorization': "Bearer " + self.access_token }
-            response = requests.get(self.deviceUrl+self.hwid, headers=headers)
-            if response.status_code == 200:
-                self.state = response.json()
-                return True
-        return False
-
-    def getTokens(self):
-        headers = { 'Content-Type': 'application/json' }
-        json_data = {
-            'password': self.password,
-            'email': self.email,
-        }
-
-        response = requests.post(self.loginUrl, headers=headers, json=json_data)
-        if response.status_code == 200:
-            self.access_token = response.json()['access_token']
-            self.refresh_token = response.json()['refresh_token']
-            self.update_token = int(time.time())
-            return True
-        _LOGGER.error("Get Refresh Token: failed")
-        return False
-
-    def getAccessToken(self):  
-        data = {
-            'refresh_token': self.refresh_token,
-        }
-        response = requests.post(self.tokenUrl, data=data)
-        if response.status_code == 200:
-            self.access_token = response.json()['access_token']
-            self.refresh_token = response.json()['refresh_token']
-            self.update_token = int(time.time())
-            return True
-        _LOGGER.error("Get Access Token: failed")
-        return False

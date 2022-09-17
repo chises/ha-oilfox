@@ -1,20 +1,26 @@
 # ha-oilfox
 HomeAssistant Sensor for OilFox using the official customer API.
 
-In my Setup (Home Assistant 2022.8.7) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
+In my Setup (Home Assistant 2022.9.4) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
 
 If you habe some problems or ideas just let me know!
 
 ## Setup
-nothing special, install like all others custom components :)
+It is listed in HACS, just search for "OilFox".
+If you prefer the manual installation, it is done like other custom components :)
 
 ## Configuration
-Add a new sensor *oilfox* with email and password that your oilfox is connected with 
+If you are not configuration vioa config flow you can add a new sensor *oilfox* with email and password that your oilfox is connected with 
 ```yaml
 sensor: 
   - platform: oilfox
     email: "<your email>"
     password: "<your password>"
+```
+
+Important: the yaml configuration will be removed in future releases! Please use the config flow. Configuration within the yaml file will be migrated to the config flow. A warning will be shown if the yaml configuration is migrated to the config flow
+```
+2022-09-17 17:12:31.584 WARNING (MainThread) [custom_components.oilfox.sensor] Import yaml configration settings into config flow
 ```
 ## Result
 After installing the component and configure the sensor new entities will be added. Something like *sensor.oilfox_hadwareid_sensor*
