@@ -62,7 +62,7 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up certificate expiry sensor."""
+    """Set up OilFox sensor."""
 
     @callback
     def schedule_import(_):
@@ -93,41 +93,50 @@ async def async_setup_entry(
     password = config_entry.data[CONF_PASSWORD]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    oilfox_items = coordinator.data["items"]
-    if not oilfox_items:
+    oilfox_devices = coordinator.data["items"]
+    if not oilfox_devices:
         _LOGGER.error(
             "OilFox: Could not fetch information through API, invalid credentials?"
         )
         return False
 
     entities = []
-    for item in oilfox_items:
-        _LOGGER.info("OilFox: Found Device in API: %s", item["hwid"])
+    _LOGGER.debug("OilFox: Full API response: %s", oilfox_devices)
+    oilfox_device_index = 0
+    for oilfox_device in oilfox_devices:
+        _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
         for sensor in SENSORS.items():
             _LOGGER.debug(
                 "OilFox: Create Sensor %s for Device %s",
                 sensor[0],
-                item["hwid"],
+                oilfox_device["hwid"],
             )
             oilfox_sensor = OilFoxSensor(
-                coordinator, OilFox(email, password, item["hwid"]), sensor[1]
+                coordinator, OilFox(email, password, oilfox_device["hwid"]), sensor[1]
             )
-
-            oilfox_sensor.set_api_response(coordinator.data["items"][0])
-            if sensor[0] in coordinator.data["items"][0]:
+            oilfox_sensor.set_api_response(oilfox_device)
+            if sensor[0] in oilfox_device:
                 _LOGGER.debug(
                     "Prefill entity %s with %s",
                     sensor[0],
-                    coordinator.data["items"][0][sensor[0]],
+                    oilfox_device[sensor[0]],
                 )
-                oilfox_sensor.set_state(coordinator.data["items"][0][sensor[0]])
+                oilfox_sensor.set_state(oilfox_device[sensor[0]])
             else:
-                _LOGGER.debug(
-                    "Initialize entity %s with empty value",
-                    sensor[0],
-                )
-                oilfox_sensor.set_state("")
+                if sensor[0] == "validationError":
+                    _LOGGER.debug(
+                        'Initialize entity %s with "No error"',
+                        sensor[0],
+                    )
+                    oilfox_sensor.set_state("No Error")
+                else:
+                    _LOGGER.debug(
+                        "Initialize entity %s with empty value",
+                        sensor[0],
+                    )
+                    oilfox_sensor.set_state("")
             entities.append(oilfox_sensor)
+        oilfox_device_index = oilfox_device_index + 1
     async_add_entities(entities)
 
 
@@ -176,6 +185,10 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
                         my_data = self.battery_mapping[data[self.sensor[0]]]
                     else:
                         my_data = data[self.sensor[0]]
+                elif self.sensor[0] == "validationError":
+                    my_data = "No Error"
+                else:
+                    my_data = ""
 
                 _LOGGER.debug(
                     "Update entity %s for HWID %s with value: %s",

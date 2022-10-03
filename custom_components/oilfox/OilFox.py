@@ -52,6 +52,11 @@ class OilFox:
             not_error = await self.get_access_token()
             _LOGGER.debug("Update Access Token: %s", not_error)
 
+        if not not_error:
+            _LOGGER.debug("Update Access Token failed, Refresh all Tokens!")
+            not_error = await self.get_tokens()
+            _LOGGER.debug("Update Tokens: %s", not_error)
+
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
             async with aiohttp.ClientSession() as session:
