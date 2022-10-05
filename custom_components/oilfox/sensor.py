@@ -102,7 +102,6 @@ async def async_setup_entry(
 
     entities = []
     _LOGGER.debug("OilFox: Full API response: %s", oilfox_devices)
-    oilfox_device_index = 0
     for oilfox_device in oilfox_devices:
         _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
         for sensor in SENSORS.items():
@@ -125,18 +124,17 @@ async def async_setup_entry(
             else:
                 if sensor[0] == "validationError":
                     _LOGGER.debug(
-                        'Initialize entity %s with "No error"',
+                        'Prefill entity %s with "No error"',
                         sensor[0],
                     )
                     oilfox_sensor.set_state("No Error")
                 else:
                     _LOGGER.debug(
-                        "Initialize entity %s with empty value",
+                        "Prefill entity %s with empty value",
                         sensor[0],
                     )
                     oilfox_sensor.set_state("")
             entities.append(oilfox_sensor)
-        oilfox_device_index = oilfox_device_index + 1
     async_add_entities(entities)
 
 
@@ -176,19 +174,18 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        for data in self.coordinator.data["items"]:
-            if data["hwid"] == self.oilfox.hwid:
-                self.api_response = data
+        oilfox_devices = self.coordinator.data["items"]
+        for oilfox_device in oilfox_devices:
+            if oilfox_device["hwid"] == self.oilfox.hwid:
+                self.set_api_response(oilfox_device)
                 my_data = ""
-                if self.sensor[0] in data:
+                if self.sensor[0] in oilfox_device:
                     if self.sensor[0] == "batteryLevel":
-                        my_data = self.battery_mapping[data[self.sensor[0]]]
+                        my_data = self.battery_mapping[oilfox_device[self.sensor[0]]]
                     else:
-                        my_data = data[self.sensor[0]]
+                        my_data = oilfox_device[self.sensor[0]]
                 elif self.sensor[0] == "validationError":
                     my_data = "No Error"
-                else:
-                    my_data = ""
 
                 _LOGGER.debug(
                     "Update entity %s for HWID %s with value: %s",
@@ -238,6 +235,10 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the attributes of the sensor."""
+        _LOGGER.debug(
+            'Extra stats: %s"',
+            self.api_response,
+        )
         additional_attributes = {
             "Last Measurement": self.api_response.get("currentMeteringAt"),
             "Next Measurement": self.api_response.get("nextMeteringAt"),
