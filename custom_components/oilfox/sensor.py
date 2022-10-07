@@ -236,9 +236,9 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         """Return the attributes of the sensor."""
         _LOGGER.debug(
-            'Extra stats: %s"',
+        """    'Extra stats: %s"',
             self.api_response,
-        )
+        )"""
         additional_attributes = {
             "Last Measurement": self.api_response.get("currentMeteringAt"),
             "Next Measurement": self.api_response.get("nextMeteringAt"),
