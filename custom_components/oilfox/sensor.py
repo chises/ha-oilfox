@@ -235,8 +235,8 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the attributes of the sensor."""
-        _LOGGER.debug(
-        """    'Extra stats: %s"',
+        """_LOGGER.debug(
+           'Extra stats: %s"',
             self.api_response,
         )"""
         additional_attributes = {
