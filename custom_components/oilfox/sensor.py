@@ -4,7 +4,11 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.components.sensor import (
+    PLATFORM_SCHEMA,
+    SensorEntity,
+    SensorDeviceClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.const import (
@@ -33,37 +37,49 @@ SENSORS = {
         PERCENTAGE,
         "mdi:percent",
         "fillLevelPercent",
+        None,
     ],
     "fillLevelQuantity": [
         "fillLevelQuantity",
         VOLUME_LITERS,
         "mdi:hydraulic-oil-level",
         "fillLevelQuantity",
+        SensorDeviceClass.VOLUME,
     ],
     "daysReach": [
         "daysReach",
         TIME_DAYS,
         "mdi:calendar-range",
         "daysReach",
+        SensorDeviceClass.DURATION,
     ],
-    "batteryLevel": ["batteryLevel", PERCENTAGE, "mdi:battery", "batteryLevel"],
+    "batteryLevel": [
+        "batteryLevel",
+        PERCENTAGE,
+        "mdi:battery",
+        "batteryLevel",
+        SensorDeviceClass.BATTERY,
+    ],
     "validationError": [
         "validationError",
         None,
         "mdi:message-alert",
         "validationError",
+        None,
     ],
     "currentMeteringAt": [
         "currentMeteringAt",
         None,
         "mdi:calendar-arrow-left",
         "lastMeasurement",
+        SensorDeviceClass.TIMESTAMP,
     ],
     "nextMeteringAt": [
         "nextMeteringAt",
         None,
         "mdi:calendar-arrow-right",
         "nextMeasurement",
+        SensorDeviceClass.TIMESTAMP,
     ],
 }
 
@@ -131,7 +147,9 @@ async def async_setup_entry(
                 oilfox_device["hwid"],
             )
             oilfox_sensor = OilFoxSensor(
-                coordinator, OilFox(email, password, oilfox_device["hwid"]), sensor[1]
+                coordinator,
+                OilFox(email, password, oilfox_device["hwid"]),
+                sensor[1],
             )
             oilfox_sensor.set_api_response(oilfox_device)
             if sensor[0] in oilfox_device:
@@ -185,7 +203,7 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator, element, sensor):
         super().__init__(coordinator)
-
+        self._attr_device_class = sensor[4]
         self.sensor = sensor
         self.oilfox = element
         self._state = None
