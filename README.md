@@ -10,13 +10,7 @@ It is listed in HACS, just search for "OilFox".
 If you prefer the manual installation, it is done like other custom components :)
 
 ## Configuration
-If you are not configuration via config flow you can add a new sensor *oilfox* with email and password that your oilfox is connected with 
-```yaml
-sensor: 
-  - platform: oilfox
-    email: "<your email>"
-    password: "<your password>"
-```
+Please use the configuration flow in system - settings - integration
 
 **Important:** the yaml configuration will be removed in future releases! Please use the config flow. Configuration within the yaml file will be migrated to the config flow. A warning will be shown if the yaml configuration is migrated to the config flow
 ```
@@ -27,9 +21,9 @@ After installing the component and configure the sensor new entities will be add
 
 Multiple Devices on the OilFox account are supported.
 
-  ![image](https://user-images.githubusercontent.com/10805806/164910584-723ca9ff-d8d0-43ef-b14a-e5239d1ca411.png)
+  ![image](https://user-images.githubusercontent.com/10805806/194892834-1a8dcb4c-32e9-455b-94cd-aae02347baac.png)
 
-  ![image](https://user-images.githubusercontent.com/10805806/187221763-b7844b6c-1c80-4bb1-b493-f006afa0e0fb.png)
+  ![image](https://user-images.githubusercontent.com/10805806/194893114-6cecd5e7-a155-4fd1-bca4-b2ccab1f02a6.png)
 
 ## Logging
 For debug log messages you need to adjust the log config for custom_components.oilfox.sensor based on the [HA documentation](https://www.home-assistant.io/integrations/logger/)
