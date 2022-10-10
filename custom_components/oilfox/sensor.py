@@ -32,19 +32,39 @@ SENSORS = {
         "fillLevelPercent",
         PERCENTAGE,
         "mdi:percent",
+        "fillLevelPercent",
     ],
     "fillLevelQuantity": [
         "fillLevelQuantity",
         VOLUME_LITERS,
         "mdi:hydraulic-oil-level",
+        "fillLevelQuantity",
     ],
     "daysReach": [
         "daysReach",
         TIME_DAYS,
         "mdi:calendar-range",
+        "daysReach",
     ],
-    "batteryLevel": ["batteryLevel", PERCENTAGE, "mdi:battery"],
-    "validationError": ["validationError", None, "mdi:message-alert"],
+    "batteryLevel": ["batteryLevel", PERCENTAGE, "mdi:battery", "batteryLevel"],
+    "validationError": [
+        "validationError",
+        None,
+        "mdi:message-alert",
+        "validationError",
+    ],
+    "currentMeteringAt": [
+        "currentMeteringAt",
+        None,
+        "mdi:calendar-arrow-left",
+        "lastMeasurement",
+    ],
+    "nextMeteringAt": [
+        "nextMeteringAt",
+        None,
+        "mdi:calendar-arrow-right",
+        "nextMeasurement",
+    ],
 }
 
 # Validation of the user's configuration
@@ -124,7 +144,7 @@ async def async_setup_entry(
             else:
                 if sensor[0] == "validationError":
                     _LOGGER.debug(
-                        'Prefill entity %s with "No error"',
+                        'Prefill entity %s with "No Error"',
                         sensor[0],
                     )
                     oilfox_sensor.set_state("No Error")
@@ -215,12 +235,12 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return the name of the sensor."""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
 
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
 
     @property
     def state(self) -> str:
