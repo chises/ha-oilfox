@@ -17,6 +17,7 @@ from homeassistant.const import (
     TIME_DAYS,
     EVENT_HOMEASSISTANT_START,
 )
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import (
@@ -283,3 +284,14 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity):
             "Battery": self.api_response.get("batteryLevel"),
         }
         return additional_attributes
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={
+                # HardwareIDs are unique identifiers within a specific domain
+                (DOMAIN, self.oilfox.hwid)
+            },
+            name="OilFox-" + self.oilfox.hwid,
+        )
