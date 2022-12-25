@@ -52,7 +52,7 @@ SENSORS = {
         TIME_DAYS,
         "mdi:calendar-range",
         "daysReach",
-        SensorDeviceClass.DURATION,
+        None,
     ],
     "batteryLevel": [
         "batteryLevel",
