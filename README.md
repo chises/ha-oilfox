@@ -1,8 +1,6 @@
 # ha-oilfox
 HomeAssistant Sensor for OilFox using the official customer API.
 
-In my Setup (Home Assistant 2022.9.4) this component is working but it should ne used with caution as his is my first homeassistant component and pyhton project at all. 
-
 If you habe some problems or ideas just let me know!
 
 ## Setup
@@ -23,7 +21,7 @@ Multiple Devices on the OilFox account are supported.
 
   ![image](https://user-images.githubusercontent.com/10805806/194892834-1a8dcb4c-32e9-455b-94cd-aae02347baac.png)
 
-  ![image](https://user-images.githubusercontent.com/10805806/194893114-6cecd5e7-a155-4fd1-bca4-b2ccab1f02a6.png)
+  ![image](https://user-images.githubusercontent.com/10805806/209467761-0445c376-cf6f-477a-8acc-b4f3d9875a49.png)
 
 ## Logging
 For debug log messages you need to adjust the log config for custom_components.oilfox.sensor based on the [HA documentation](https://www.home-assistant.io/integrations/logger/)
