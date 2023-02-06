@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await oilfox_data_coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = oilfox_data_coordinator
-    hass.config_entries.async_setup_platforms(entry, (Platform.SENSOR,))
+    await hass.config_entries.async_forward_entry_setups(entry, (Platform.SENSOR,))
 
     return True
 
