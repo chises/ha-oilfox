@@ -38,10 +38,10 @@ _LOGGER = logging.getLogger(__name__)
 KWH_PER_L_OIL = 9.8
 
 SENSORS = {
-    # index 0 = API Name
+    # index 0 = API Name & unique ID
     # index 1 = units of measurement
     # index 2 = icon
-    # index 3 = HA name
+    # index 3 = HA friendly name
     # index 4 = device class
     # index 5 = state class
     "fillLevelPercent": [
@@ -50,7 +50,7 @@ SENSORS = {
         "mdi:percent",
         "fillLevelPercent",
         None,
-        None,
+        SensorStateClass.TOTAL,
     ],
     "fillLevelQuantity": [
         "fillLevelQuantity",
@@ -58,7 +58,7 @@ SENSORS = {
         "mdi:hydraulic-oil-level",
         "fillLevelQuantity",
         SensorDeviceClass.VOLUME,
-        None,
+        SensorStateClass.TOTAL,
     ],
     "daysReach": [
         "daysReach",
@@ -104,7 +104,7 @@ SENSORS = {
         "usageCounter",
         ENERGY_KILO_WATT_HOUR,
         "mdi:barrel",
-        "usageCounter",
+        "energyConsumption",
         SensorDeviceClass.ENERGY,
         SensorStateClass.TOTAL_INCREASING,
     ],
@@ -378,8 +378,16 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def unique_id(self) -> str:
-        """Return the name of the sensor."""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
+        """Return the unique_id of the sensor."""
+
+        """
+        Dirty workaround: entites meteringAt did use self.sensor[3] instead of self.sensor[0] as ID before ha-oilfox version 0.1.8
+        """
+        if self.sensor[0] == "currentMeteringAt":
+            return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
+        if self.sensor[0] == "nextMeteringAt":
+            return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
 
     @property
     def name(self) -> str:
@@ -405,8 +413,6 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device info."""
         return DeviceInfo(
-            identifiers={
-                (DOMAIN, self.oilfox.hwid)
-            },
+            identifiers={(DOMAIN, self.oilfox.hwid)},
             name="OilFox-" + self.oilfox.hwid,
         )
