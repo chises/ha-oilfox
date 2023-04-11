@@ -57,7 +57,7 @@ SENSORS = {
         VOLUME_LITERS,
         "mdi:hydraulic-oil-level",
         "fillLevelQuantity",
-        SensorDeviceClass.VOLUME,
+        SensorDeviceClass.VOLUME_STORAGE,
         SensorStateClass.TOTAL,
     ],
     "daysReach": [
