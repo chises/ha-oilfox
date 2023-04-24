@@ -32,7 +32,7 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
 
     async def _async_update_data(self) -> None:
         """Fetch data."""
-        data = await self.oilfox_api.update_stats()
-        if data is None:
-            raise update_coordinator.UpdateFailed("Unable to Update OilFox device")
-        return self.oilfox_api.state
+        try:
+            await self.oilfox_api.update_stats()
+        finally:
+            return self.oilfox_api.state

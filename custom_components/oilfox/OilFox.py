@@ -60,12 +60,16 @@ class OilFox:
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
             async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    self.deviceUrl + self.hwid, headers=headers, timeout=self.TIMEOUT
-                ) as response:
-                    if response.status == 200:
-                        self.state = await response.json()
-                        return True
+                try:
+                    async with session.get(
+                        self.deviceUrl + self.hwid, headers=headers, timeout=self.TIMEOUT
+                    ) as response:
+                        if response.status == 200:
+                            self.state = await response.json()
+                            return True
+                except Exception as err:
+                    print(repr(err))
+                    return False
         return False
 
     async def get_tokens(self):
