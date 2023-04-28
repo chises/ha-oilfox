@@ -30,7 +30,7 @@ Example configuration.yaml
 logger:
   default: info
   logs:
-    custom_components.oilfox.sensor: debug
+    custom_components.oilfox: debug
 ```
 
 ## Battery Entity
