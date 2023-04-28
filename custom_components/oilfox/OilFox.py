@@ -10,7 +10,7 @@ class OilFox:
     """OilFox Python Class"""
 
     # https://github.com/foxinsights/customer-api
-    TIMEOUT = 5
+    TIMEOUT = 15
     TOKEN_VALID = 900
     hwid = None
     password = None
@@ -59,16 +59,20 @@ class OilFox:
 
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(timeout=self.TIMEOUT) as session:
                 try:
                     async with session.get(
-                        self.deviceUrl + self.hwid, headers=headers, timeout=self.TIMEOUT
+                        self.deviceUrl + self.hwid,
+                        headers=headers,
+                        timeout=self.TIMEOUT,
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
                             return True
+                        _LOGGER.debug(repr(response))
+                        return False
                 except Exception as err:
-                    print(repr(err))
+                    _LOGGER.error("Update values failed: %s", repr(err))
                     return False
         return False
 

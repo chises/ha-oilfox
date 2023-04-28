@@ -2,6 +2,7 @@
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import update_coordinator
+from homeassistant.exceptions import ConfigEntryNotReady
 from datetime import timedelta
 from .const import DOMAIN
 from .OilFox import OilFox
@@ -34,5 +35,6 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
         """Fetch data."""
         try:
             await self.oilfox_api.update_stats()
-        finally:
-            return self.oilfox_api.state
+        except Exception as err:
+            raise ConfigEntryNotReady(repr(err))
+        return self.oilfox_api.state
