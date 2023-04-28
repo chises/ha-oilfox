@@ -12,6 +12,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.const import (
     PERCENTAGE,
     VOLUME_LITERS,
@@ -155,14 +156,12 @@ async def async_setup_entry(
     email = config_entry.data[CONF_EMAIL]
     password = config_entry.data[CONF_PASSWORD]
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-
-    oilfox_devices = coordinator.data["items"]
-    if not oilfox_devices:
-        _LOGGER.error(
-            "OilFox: Could not fetch information through API, invalid credentials?"
+    _LOGGER.debug("OilFox Coordinator Data Result: %s", coordinator.data)
+    if coordinator.data is None or coordinator.data is False:
+        raise ConfigEntryNotReady(
+            "Error on Coordinator Data Result: " + repr(coordinator.data)
         )
-        return False
-
+    oilfox_devices = coordinator.data["items"]
     entities = []
     _LOGGER.debug("OilFox: Full API response: %s", oilfox_devices)
     for oilfox_device in oilfox_devices:
@@ -254,7 +253,8 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
             if not state:
                 _LOGGER.debug("No saved State for %s", self.sensor[0])
                 return
-            _LOGGER.debug("Old State %s for %s restored", state.state, self.sensor[0])
+            _LOGGER.debug("Old State %s for %s restored",
+                          state.state, self.sensor[0])
             self._state = state.state
             if state.attributes.get("Previous Value") is None:
                 self._extra_state_attributes["Previous Value"] = int(0)
