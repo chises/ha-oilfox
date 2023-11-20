@@ -288,8 +288,8 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                 _LOGGER.debug("No saved State for %s", self.sensor[0])
                 self._state = int(0)
             else:
-            	_LOGGER.debug("Old State %s for %s restored", state.state, self.sensor[0])
-            	self._state = state.state
+                _LOGGER.debug("Old State %s for %s restored", state.state, self.sensor[0])
+                self._state = state.state
             if state.attributes.get("Previous Value") is None:
                 self._extra_state_attributes["Previous Value"] = int(0)
             else:
