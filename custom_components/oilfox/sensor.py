@@ -109,6 +109,14 @@ SENSORS = {
         SensorDeviceClass.ENERGY,
         SensorStateClass.TOTAL_INCREASING,
     ],
+    "usageCounterQuantity": [
+        "usageCounterQuantity",
+        VOLUME_LITERS,
+        "mdi:barrel-outline",
+        "usageCounterQuantity",
+        SensorDeviceClass.VOLUME_STORAGE,
+        SensorStateClass.TOTAL_INCREASING,
+    ],
 }
 
 # Validation of the user's configuration
@@ -199,6 +207,12 @@ async def async_setup_entry(
                         sensor[0],
                     )
                     oilfox_sensor.set_state(float(0))
+                elif sensor[0] == "usageCounterQuantity":
+                    _LOGGER.debug(
+                        'Prefill entity %s with "0"',
+                        sensor[0],
+                    )
+                    oilfox_sensor.set_state(float(0))
                 else:
                     _LOGGER.debug(
                         "Prefill entity %s with empty value",
@@ -252,10 +266,30 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
         if self.sensor[0] == "usageCounter":
             if not state:
                 _LOGGER.debug("No saved State for %s", self.sensor[0])
-                return
-            _LOGGER.debug("Old State %s for %s restored",
-                          state.state, self.sensor[0])
-            self._state = state.state
+                self._state = int(0)
+            else:
+            	_LOGGER.debug("Old State %s for %s restored", state.state, self.sensor[0])
+                self._state = state.state
+            if state.attributes.get("Previous Value") is None:
+                self._extra_state_attributes["Previous Value"] = int(0)
+            else:
+                self._extra_state_attributes["Previous Value"] = state.attributes.get(
+                    "Previous Value"
+                )
+            if state.attributes.get("Current Value") is None:
+                self._extra_state_attributes["Current Value"] = int(0)
+            else:
+                self._extra_state_attributes["Current Value"] = state.attributes.get(
+                    "Current Value"
+                )
+
+        if self.sensor[0] == "usageCounterQuantity":
+            if not state:
+                _LOGGER.debug("No saved State for %s", self.sensor[0])
+                self._state = int(0)
+            else:
+            	_LOGGER.debug("Old State %s for %s restored", state.state, self.sensor[0])
+            	self._state = state.state
             if state.attributes.get("Previous Value") is None:
                 self._extra_state_attributes["Previous Value"] = int(0)
             else:
@@ -334,6 +368,59 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                                 self.set_state(
                                     float(self._state) + (KWH_PER_L_OIL * diff)
                                 )
+                                _LOGGER.debug(
+                                    "Set state to %s because of calculated diff %s",
+                                    self._state,
+                                    diff,
+                                )
+                        _LOGGER.debug(
+                            "Update attribute Previous Value for HWID %s with: %s\tUpdate attribute Current Value for HWID %s with: %s",
+                            self.oilfox.hwid,
+                            self._extra_state_attributes["Previous Value"],
+                            self.oilfox.hwid,
+                            self._extra_state_attributes["Current Value"],
+                        )
+                elif self.sensor[0] == "usageCounterQuantity":
+                    _LOGGER.debug(
+                        "Update for usageCounterQuantity current val %s and filled: %s",
+                        self._extra_state_attributes["Current Value"],
+                        oilfox_device.get("fillLevelQuantity"),
+                    )
+                    if self._extra_state_attributes[
+                        "Current Value"
+                    ] != oilfox_device.get("fillLevelQuantity"):
+                        if (
+                            self._extra_state_attributes["Current Value"] is None
+                            or self._extra_state_attributes["Current Value"] == 0
+                        ):
+                            self._extra_state_attributes[
+                                "Previous Value"
+                            ] = self._extra_state_attributes["Current Value"]
+                            self._extra_state_attributes["Current Value"] = float(
+                                oilfox_device.get("fillLevelQuantity")
+                            )
+                            _LOGGER.debug(
+                                "Current Value 0 or None, UpdatePrevious Value: %s \tCurrent Value: %s",
+                                self._extra_state_attributes["Previous Value"],
+                                self._extra_state_attributes["Current Value"],
+                            )
+                            self._state = int(0)
+                        else:
+                            self._extra_state_attributes[
+                                "Previous Value"
+                            ] = self._extra_state_attributes["Current Value"]
+                            self._extra_state_attributes[
+                                "Current Value"
+                            ] = oilfox_device.get("fillLevelQuantity")
+
+                            if self._extra_state_attributes["Previous Value"] > float(
+                                self._extra_state_attributes["Current Value"]
+                            ):
+                                diff = abs(
+                                    self._extra_state_attributes["Previous Value"]
+                                    - self._extra_state_attributes["Current Value"]
+                                )
+                                self.set_state(float(self._state) + (diff))
                                 _LOGGER.debug(
                                     "Set state to %s because of calculated diff %s",
                                     self._state,
