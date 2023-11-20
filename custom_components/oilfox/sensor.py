@@ -282,7 +282,6 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                 self._extra_state_attributes["Current Value"] = state.attributes.get(
                     "Current Value"
                 )
-
         if self.sensor[0] == "usageCounterQuantity":
             if not state:
                 _LOGGER.debug("No saved State for %s", self.sensor[0])
