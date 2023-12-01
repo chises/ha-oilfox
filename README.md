@@ -24,6 +24,12 @@ Multiple Devices on the OilFox account are supported.
   ![image](https://user-images.githubusercontent.com/10805806/209467761-0445c376-cf6f-477a-8acc-b4f3d9875a49.png)
 
 ## Logging
+### Option 1 GUI
+Enable the Debug Log in the Intergration Menu available in Settings - Integration - OilFox
+
+  ![image](https://github.com/chises/ha-oilfox/assets/10805806/f938acdb-987a-49fb-9e24-023b5e617755)
+
+### Option 2 Config File
 For debug log messages you need to adjust the log config for custom_components.oilfox.sensor based on the [HA documentation](https://www.home-assistant.io/integrations/logger/)
 Example configuration.yaml
 ```
