@@ -15,10 +15,10 @@ from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.const import (
     PERCENTAGE,
-    VOLUME_LITERS,
-    TIME_DAYS,
+    UnitOfVolume,
+    UnitOfTime,
     EVENT_HOMEASSISTANT_START,
-    ENERGY_KILO_WATT_HOUR,
+    UnitOfEnergy,
 )
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity import DeviceInfo
@@ -55,7 +55,7 @@ SENSORS = {
     ],
     "fillLevelQuantity": [
         "fillLevelQuantity",
-        VOLUME_LITERS,
+        UnitOfVolume.LITERS,
         "mdi:hydraulic-oil-level",
         "fillLevelQuantity",
         SensorDeviceClass.VOLUME_STORAGE,
@@ -63,7 +63,7 @@ SENSORS = {
     ],
     "daysReach": [
         "daysReach",
-        TIME_DAYS,
+        UnitOfTime.DAYS,
         "mdi:calendar-range",
         "daysReach",
         None,
@@ -103,7 +103,7 @@ SENSORS = {
     ],
     "usageCounter": [
         "usageCounter",
-        ENERGY_KILO_WATT_HOUR,
+        UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:barrel",
         "energyConsumption",
         SensorDeviceClass.ENERGY,
@@ -111,7 +111,7 @@ SENSORS = {
     ],
     "usageCounterQuantity": [
         "usageCounterQuantity",
-        VOLUME_LITERS,
+        UnitOfVolume.LITERS,
         "mdi:barrel-outline",
         "usageCounterQuantity",
         SensorDeviceClass.VOLUME_STORAGE,
