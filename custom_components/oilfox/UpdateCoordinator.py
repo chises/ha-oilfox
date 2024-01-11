@@ -1,14 +1,13 @@
-"""Coordinator for OilFox."""
-
-from datetime import timedelta
-import logging
+"""Coordinator for OilFox"""
 
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import update_coordinator
-
+from homeassistant.exceptions import ConfigEntryNotReady
+from datetime import timedelta
 from .const import DOMAIN
 from .OilFox import OilFox
+
+import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,14 +28,13 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=1),
+            update_interval=timedelta(minutes=10),
         )
 
     async def _async_update_data(self) -> None:
         """Fetch data."""
-        _LOGGER.debug("UpdateCoordinator _async_update_data")
         try:
             await self.oilfox_api.update_stats()
         except Exception as err:
-            raise ConfigEntryNotReady(repr(err)) from err
+            raise ConfigEntryNotReady(repr(err))
         return self.oilfox_api.state
