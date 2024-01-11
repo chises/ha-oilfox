@@ -160,7 +160,7 @@ async def async_setup_entry(
 ) -> None:
     """Initialize OilFox Integration config entry."""
 
-    _LOGGER.error("OilFox: Setup User: %s", config_entry.data[CONF_EMAIL])
+    _LOGGER.info("OilFox: Setup User: %s", config_entry.data[CONF_EMAIL])
     email = config_entry.data[CONF_EMAIL]
     password = config_entry.data[CONF_PASSWORD]
 

@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Setup OilFox with config entry."""  # noqa: D401
-    _LOGGER.error("async_setup_entry __init__")
+    _LOGGER.debug("async_setup_entry __init__")
     hass.data.setdefault(DOMAIN, {})
     my_oilfox = OilFox(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD], "")
     oilfox_data_coordinator = UpdateCoordinator(hass, oilfox_api=my_oilfox)
