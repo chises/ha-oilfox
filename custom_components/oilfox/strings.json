@@ -16,5 +16,16 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     }
+  },
+  "options": {
+    "step":{
+      "init": {
+        "title": "OilFox Options",
+        "data": {
+          "http-timeout": "HTTP Timeout"
+        },
+        "description": ""
+      }
+    }
   }
 }
