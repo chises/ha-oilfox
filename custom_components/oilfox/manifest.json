@@ -8,6 +8,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/chises/ha-oilfox/issues",
   "loggers": ["oilfox_component"],
-  "requirements": ["aiohttp==3.9.1"],
-  "version": "1.0.0-alpha"
+  "requirements": ["aiohttp"],
+  "version": "1.0.1-alpha"
 }

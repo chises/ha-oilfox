@@ -66,16 +66,18 @@ class OilFox:
 
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
-            async with aiohttp.ClientSession(timeout=self.TIMEOUT) as session:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(self.TIMEOUT)
+            ) as session:
                 try:
                     async with session.get(
                         self.device_url + self.hwid,
                         headers=headers,
-                        timeout=self.TIMEOUT,
+                        timeout=aiohttp.ClientTimeout(self.TIMEOUT),
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
-                except asyncio.TimeoutError as err:
+                except asyncio.TimeoutError:
                     raise ConfigEntryNotReady(  # noqa: TRY200
                         f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
                     )
@@ -101,7 +103,10 @@ class OilFox:
         }
 
         async with aiohttp.ClientSession() as session, session.post(
-            self.login_url, headers=headers, json=json_data, timeout=self.TIMEOUT
+            self.login_url,
+            headers=headers,
+            json=json_data,
+            timeout=aiohttp.ClientTimeout(self.TIMEOUT),
         ) as response:
             if response.status == 200:
                 json_response = await response.json()
@@ -121,7 +126,7 @@ class OilFox:
             "refresh_token": self.refresh_token,
         }
         async with aiohttp.ClientSession() as session, session.post(
-            self.token_url, data=data, timeout=self.TIMEOUT
+            self.token_url, data=data, timeout=aiohttp.ClientTimeout(self.TIMEOUT)
         ) as response:
             _LOGGER.debug("Get Access Token:%s", response.status)
             if response.status == 200:
