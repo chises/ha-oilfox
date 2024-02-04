@@ -2,6 +2,7 @@
 import time
 import logging
 import aiohttp
+from aiohttp import ClientTimeout
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ class OilFox:
     """OilFox Python Class"""
 
     # https://github.com/foxinsights/customer-api
-    TIMEOUT = 15
+    TIMEOUT = 30
     TOKEN_VALID = 900
     hwid = None
     password = None
@@ -59,12 +60,12 @@ class OilFox:
 
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
-            async with aiohttp.ClientSession(timeout=self.TIMEOUT) as session:
+            async with aiohttp.ClientSession(
+                timeout=ClientTimeout(total=self.TIMEOUT)
+            ) as session:
                 try:
                     async with session.get(
-                        self.deviceUrl + self.hwid,
-                        headers=headers,
-                        timeout=self.TIMEOUT,
+                        self.deviceUrl + self.hwid, headers=headers
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
@@ -84,9 +85,11 @@ class OilFox:
             "email": self.email,
         }
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(
+            timeout=ClientTimeout(total=self.TIMEOUT)
+        ) as session:
             async with session.post(
-                self.loginUrl, headers=headers, json=json_data, timeout=self.TIMEOUT
+                self.loginUrl, headers=headers, json=json_data
             ) as response:
                 if response.status == 200:
                     json_response = await response.json()
@@ -103,10 +106,10 @@ class OilFox:
         data = {
             "refresh_token": self.refresh_token,
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                self.tokenUrl, data=data, timeout=self.TIMEOUT
-            ) as response:
+        async with aiohttp.ClientSession(
+            timeout=ClientTimeout(total=self.TIMEOUT)
+        ) as session:
+            async with session.post(self.tokenUrl, data=data) as response:
                 if response.status == 200:
                     json_response = await response.json()
                     self.access_token = json_response["access_token"]
