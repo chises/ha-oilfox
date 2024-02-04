@@ -189,17 +189,29 @@ async def async_setup_entry(
                 sensor[0],
                 oilfox_device["hwid"],
             )
-            oilfox_sensor = OilFoxSensor(
-                coordinator,
-                OilFox(
-                    email,
-                    password,
-                    oilfox_device["hwid"],
-                    timeout=config_entry.options[CONF_HTTP_TIMEOUT],
-                ),
-                sensor[1],
-                hass,
-            )
+            if CONF_HTTP_TIMEOUT in config_entry.options:
+                oilfox_sensor = OilFoxSensor(
+                    coordinator,
+                    OilFox(
+                        email,
+                        password,
+                        oilfox_device["hwid"],
+                        timeout=config_entry.options[CONF_HTTP_TIMEOUT],
+                    ),
+                    sensor[1],
+                    hass,
+                )
+            else:
+                oilfox_sensor = OilFoxSensor(
+                    coordinator,
+                    OilFox(
+                        email,
+                        password,
+                        oilfox_device["hwid"],
+                    ),
+                    sensor[1],
+                    hass,
+                )
             oilfox_sensor.set_api_response(oilfox_device)
             if sensor[0] in oilfox_device:
                 _LOGGER.debug(

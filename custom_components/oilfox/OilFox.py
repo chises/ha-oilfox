@@ -34,9 +34,9 @@ class OilFox:
         self.hwid = hwid
         self.TIMEOUT = timeout
         self.state = None
-        _LOGGER.info(
-            "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
-        )
+        #_LOGGER.info(
+        #    "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
+        #)
 
     async def test_connection(self):
         """Test connection to OilFox Api."""
