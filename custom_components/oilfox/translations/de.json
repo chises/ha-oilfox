@@ -16,5 +16,16 @@
                 }
             }
         }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "http-timeout": "HTTP Timeout in Sekunden"
+                },
+                "description": "",
+                "title": "OilFox Options"
+            }
+        }
     }
 }

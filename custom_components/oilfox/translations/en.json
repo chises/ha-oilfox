@@ -1,19 +1,30 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Account is already configured"
+            "already_configured": "Device is already configured"
         },
         "error": {
-            "cannot_connect": "Failed to connectto OilFox API",
-            "invalid_auth": "Invalid credentials",
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
             "unknown": "Unexpected error"
         },
         "step": {
             "user": {
                 "data": {
                     "password": "Password",
-                    "email": "E-Mail"
+                    "username": "Username"
                 }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "http-timeout": "HTTP Timeout in seconds"
+                },
+                "description": "",
+                "title": "OilFox Options"
             }
         }
     }
