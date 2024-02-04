@@ -22,9 +22,9 @@
       "init": {
         "title": "OilFox Options",
         "data": {
-          "http-timeout": "HTTP Timeout"
+          "http-timeout": "HTTP Timeout in seconds"
         },
-        "description": ""
+        "description": "OilFox Integration Options"
       }
     }
   }

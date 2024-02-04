@@ -14,7 +14,7 @@ class OilFox:
     """OilFox Python Class."""
 
     # https://github.com/foxinsights/customer-api
-    TIMEOUT = 1
+    TIMEOUT = 30
     TOKEN_VALID = 900
     hwid: str = ""
     password: str = ""
@@ -27,19 +27,22 @@ class OilFox:
     device_url = base_url + "/customer-api/v1/device/"
     token_url = base_url + "/customer-api/v1/token"
 
-    def __init__(self, email, password, hwid, timeout=15):
+    def __init__(self, email, password, hwid, timeout=30):
         """Init Method for OilFox Class."""
         self.email = email
         self.password = password
         self.hwid = hwid
         self.TIMEOUT = timeout
         self.state = None
+        _LOGGER.info(
+            "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
+        )
 
     async def test_connection(self):
         """Test connection to OilFox Api."""
-        async with aiohttp.ClientSession() as session, session.get(
-            self.base_url
-        ) as response:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
+        ) as session, session.get(self.base_url) as response:
             if response.status == 200:
                 return True
             return False
@@ -50,6 +53,7 @@ class OilFox:
 
     async def update_stats(self):
         """Update OilFox API Values."""
+
         not_error = True
         if self.refresh_token == "":
             not_error = await self.get_tokens()
@@ -67,13 +71,11 @@ class OilFox:
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
             async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(self.TIMEOUT)
+                timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
             ) as session:
                 try:
                     async with session.get(
-                        self.device_url + self.hwid,
-                        headers=headers,
-                        timeout=aiohttp.ClientTimeout(self.TIMEOUT),
+                        self.device_url + self.hwid, headers=headers
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
@@ -106,7 +108,7 @@ class OilFox:
             self.login_url,
             headers=headers,
             json=json_data,
-            timeout=aiohttp.ClientTimeout(self.TIMEOUT),
+            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT),
         ) as response:
             if response.status == 200:
                 json_response = await response.json()
@@ -126,7 +128,7 @@ class OilFox:
             "refresh_token": self.refresh_token,
         }
         async with aiohttp.ClientSession() as session, session.post(
-            self.token_url, data=data, timeout=aiohttp.ClientTimeout(self.TIMEOUT)
+            self.token_url, data=data, timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
         ) as response:
             _LOGGER.debug("Get Access Token:%s", response.status)
             if response.status == 200:

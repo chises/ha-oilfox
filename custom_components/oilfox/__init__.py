@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Setup OilFox with config entry."""  # noqa: D401
-    _LOGGER.debug("async_setup_entry __init__")
+    # _LOGGER.debug("async_setup_entry __init__")
     hass.data.setdefault(DOMAIN, {})
     my_oilfox = OilFox(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD], "")
     oilfox_data_coordinator = UpdateCoordinator(hass, oilfox_api=my_oilfox)
@@ -33,26 +33,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update."""
-    _LOGGER.info("Update Listener")
-
-    for key in entry.options:
-        _LOGGER.info("%s - %s", key, entry.options[key])
+    # for key in entry.options:
+    #    _LOGGER.info("%s - %s", key, entry.options[key])
 
     hass.config_entries.async_update_entry(entry, options=entry.options)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            [hass.config_entries.async_forward_entry_unload(entry, "sensor")]
-        )
-    )
+    # unload_ok = all(
+    #    await asyncio.gather(
+    #        [hass.config_entries.async_forward_entry_unload(entry, "sensor")]
+    #    )
+    # )
     # Remove options_update_listener.
     # hass.data[DOMAIN][entry.entry_id]["unsub_options_update_listener"]()
+    return await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+    hass.data[DOMAIN].pop(entry.entry_id)
 
-    # Remove config entry from domain.
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unload_ok
+    return True

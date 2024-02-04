@@ -114,17 +114,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        _LOGGER.info("Option Flow 1")
         self.config_entry = config_entry
-        # self.options = dict(config_entry.options)
+        self.options = dict(config_entry.options)
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
+        timeout = TIMEOUT
         if user_input is not None:
-            _LOGGER.info("Option Flow 2:%s", repr(user_input))
+            # _LOGGER.info("Option Flow 2:%s", repr(user_input))
             return self.async_create_entry(title="", data=user_input)
+
+        if "http-timeout" in self.options:
+            timeout = self.options["http-timeout"]
 
         return self.async_show_form(
             step_id="init",
@@ -132,7 +135,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 {
                     vol.Required(
                         CONF_HTTP_TIMEOUT,
-                        default=TIMEOUT,
+                        default=timeout,
                     ): int
                 }
             ),

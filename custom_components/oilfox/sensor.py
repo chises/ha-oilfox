@@ -191,7 +191,12 @@ async def async_setup_entry(
             )
             oilfox_sensor = OilFoxSensor(
                 coordinator,
-                OilFox(email, password, oilfox_device["hwid"]),
+                OilFox(
+                    email,
+                    password,
+                    oilfox_device["hwid"],
+                    timeout=config_entry.options[CONF_HTTP_TIMEOUT],
+                ),
                 sensor[1],
                 hass,
             )

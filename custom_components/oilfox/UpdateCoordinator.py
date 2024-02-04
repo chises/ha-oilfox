@@ -34,7 +34,7 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
 
     async def _async_update_data(self) -> None:
         """Fetch data."""
-        _LOGGER.debug("UpdateCoordinator _async_update_data")
+        # _LOGGER.debug("UpdateCoordinator _async_update_data")
         try:
             await self.oilfox_api.update_stats()
         except Exception as err:
