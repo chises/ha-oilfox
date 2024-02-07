@@ -10,7 +10,12 @@ If you prefer the manual installation, it is done like other custom components :
 ## Configuration
 Please use the configuration flow in system - settings - integration
 
-**Important:** the yaml configuration will be removed in future releases! Please use the config flow. Configuration within the yaml file will be migrated to the config flow. A warning will be shown if the yaml configuration is migrated to the config flow
+**Important:** the yaml configuration has been removed in version 1.0.1 release! Please use the config flow. 
+
+## Options
+Option Flow since version 1.0.1 to modify the http timeout:
+<img width="752" alt="image" src="https://github.com/chises/ha-oilfox/assets/10805806/3d698bbb-aee5-4a67-9bb2-416324ab1100">
+
 ```
 2022-09-17 17:12:31.584 WARNING (MainThread) [custom_components.oilfox.sensor] Import yaml configration settings into config flow
 ```
