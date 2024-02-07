@@ -13,37 +13,43 @@ class OilFox:
     # https://github.com/foxinsights/customer-api
     TIMEOUT = 30
     TOKEN_VALID = 900
-    hwid = None
-    password = None
-    email = None
-    access_token = None
-    refresh_token = None
-    update_token = None
-    baseUrl = "https://api.oilfox.io"
-    loginUrl = baseUrl + "/customer-api/v1/login"
-    deviceUrl = baseUrl + "/customer-api/v1/device/"
-    tokenUrl = baseUrl + "/customer-api/v1/token"
+    hwid: str = ""
+    password: str = ""
+    email: str = ""
+    access_token: str = ""
+    refresh_token: str = ""
+    update_token: int = 0
+    base_url = "https://api.oilfox.io"
+    login_url = base_url + "/customer-api/v1/login"
+    device_url = base_url + "/customer-api/v1/device/"
+    token_url = base_url + "/customer-api/v1/token"
 
-    def __init__(self, email, password, hwid):
+    def __init__(self, email, password, hwid, timeout=30):
+        """Init Method for OilFox Class."""
         self.email = email
         self.password = password
         self.hwid = hwid
         self.state = None
+        #_LOGGER.info(
+        #    "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
+        #)
 
     async def test_connection(self):
-        """Test connection to OilFox Api"""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.baseUrl) as response:
-                if response.status == 200:
-                    return True
-                return False
+        """Test connection to OilFox Api."""
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
+        ) as session, session.get(self.base_url) as response:
+            if response.status == 200:
+                return True
+            return False
 
     async def test_authentication(self):
         """Test authentication with OilFox Api"""
         return await self.get_tokens()
 
     async def update_stats(self):
-        """Update OilFox API Values"""
+        """Update OilFox API Values."""
+
         not_error = True
         if self.refresh_token is None:
             not_error = await self.get_tokens()
@@ -61,17 +67,18 @@ class OilFox:
         if not_error:
             headers = {"Authorization": "Bearer " + self.access_token}
             async with aiohttp.ClientSession(
-                timeout=ClientTimeout(total=self.TIMEOUT)
+                timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
             ) as session:
                 try:
                     async with session.get(
-                        self.deviceUrl + self.hwid, headers=headers
+                        self.device_url + self.hwid, headers=headers
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
-                            return True
-                        _LOGGER.debug(repr(response))
-                        return False
+                except asyncio.TimeoutError:
+                    raise ConfigEntryNotReady(  # noqa: TRY200
+                        f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
+                    )
                 except Exception as err:
                     _LOGGER.error("Update values failed: %s", repr(err))
                     return False
@@ -85,37 +92,40 @@ class OilFox:
             "email": self.email,
         }
 
-        async with aiohttp.ClientSession(
-            timeout=ClientTimeout(total=self.TIMEOUT)
-        ) as session:
-            async with session.post(
-                self.loginUrl, headers=headers, json=json_data
-            ) as response:
-                if response.status == 200:
-                    json_response = await response.json()
-                    self.access_token = json_response["access_token"]
-                    self.refresh_token = json_response["refresh_token"]
-                    self.update_token = int(time.time())
-                    _LOGGER.debug("Update Refresh and Access Token: ok")
-                    return True
-                _LOGGER.error("Get Refresh Token: failed")
-                return False
+        async with aiohttp.ClientSession() as session, session.post(
+            self.login_url,
+            headers=headers,
+            json=json_data,
+            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT),
+        ) as response:
+            if response.status == 200:
+                json_response = await response.json()
+                self.access_token = json_response["access_token"]
+                self.refresh_token = json_response["refresh_token"]
+                self.update_token = int(time.time())
+                _LOGGER.debug(
+                    "Update Refresh and Access Token: ok [%s]", response.status
+                )
+                return True
+            _LOGGER.error("Get Refresh Token: failed [%s]", response.status)
+            return False
 
     async def get_access_token(self):
         """Update Access Token"""
         data = {
             "refresh_token": self.refresh_token,
         }
-        async with aiohttp.ClientSession(
-            timeout=ClientTimeout(total=self.TIMEOUT)
-        ) as session:
-            async with session.post(self.tokenUrl, data=data) as response:
-                if response.status == 200:
-                    json_response = await response.json()
-                    self.access_token = json_response["access_token"]
-                    self.refresh_token = json_response["refresh_token"]
-                    self.update_token = int(time.time())
-                    _LOGGER.debug("Update Access Token: ok")
-                    return True
-                _LOGGER.error("Get Access Token: failed")
-                return False
+
+        async with aiohttp.ClientSession() as session, session.post(
+            self.token_url, data=data, timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
+        ) as response:
+            _LOGGER.debug("Get Access Token:%s", response.status)
+            if response.status == 200:
+                json_response = await response.json()
+                self.access_token = json_response["access_token"]
+                self.refresh_token = json_response["refresh_token"]
+                self.update_token = int(time.time())
+                _LOGGER.debug("Update Access Token: ok [%s]", response.status)
+                return True
+            _LOGGER.error("Get Access Token: failed [%s]", response.status)
+            return False

@@ -90,6 +90,50 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_user(user_input)
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return OptionsFlowHandler(config_entry)
+
+    async def async_step_import(self, import_info: dict[str, Any]) -> FlowResult:
+        """Set the config entry up from yaml."""
+        return self.async_create_entry(title="", data=import_info)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        timeout = TIMEOUT
+        if user_input is not None:
+            # _LOGGER.info("Option Flow 2:%s", repr(user_input))
+            return self.async_create_entry(title="", data=user_input)
+
+        if "http-timeout" in self.options:
+            timeout = self.options["http-timeout"]
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HTTP_TIMEOUT,
+                        default=timeout,
+                    ): int
+                }
+            ),
+        )
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
