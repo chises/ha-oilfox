@@ -1,14 +1,17 @@
-"""Oilfox API Class"""
-import time
+"""Oilfox API Class."""
+import asyncio
 import logging
+import time
+
 import aiohttp
-from aiohttp import ClientTimeout
+
+from homeassistant.exceptions import ConfigEntryNotReady
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class OilFox:
-    """OilFox Python Class"""
+    """OilFox Python Class."""
 
     # https://github.com/foxinsights/customer-api
     TIMEOUT = 30
@@ -29,10 +32,11 @@ class OilFox:
         self.email = email
         self.password = password
         self.hwid = hwid
+        self.TIMEOUT = timeout
         self.state = None
-        #_LOGGER.info(
-        #    "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
-        #)
+        _LOGGER.info(
+            "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
+        )
 
     async def test_connection(self):
         """Test connection to OilFox Api."""
@@ -44,16 +48,16 @@ class OilFox:
             return False
 
     async def test_authentication(self):
-        """Test authentication with OilFox Api"""
+        """Test authentication with OilFox Api."""
         return await self.get_tokens()
 
     async def update_stats(self):
         """Update OilFox API Values."""
 
         not_error = True
-        if self.refresh_token is None:
+        if self.refresh_token == "":
             not_error = await self.get_tokens()
-            _LOGGER.debug("Update Refresh Token: %s", not_error)
+            # _LOGGER.debug("Update Refresh Token: %s", not_error)
 
         if int(time.time()) - self.update_token > self.TOKEN_VALID:
             not_error = await self.get_access_token()
@@ -79,13 +83,21 @@ class OilFox:
                     raise ConfigEntryNotReady(  # noqa: TRY200
                         f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
                     )
+
                 except Exception as err:
-                    _LOGGER.error("Update values failed: %s", repr(err))
+                    _LOGGER.error(
+                        "Update values failed for unknown reason! %s", repr(err)
+                    )
+                    _LOGGER.error(repr(response))
                     return False
+
+                return True
+        else:
+            _LOGGER.debug("Could not get Refresh and Access Token:")
         return False
 
     async def get_tokens(self):
-        """Update Refresh and Access Token"""
+        """Update Refresh and Access Token."""
         headers = {"Content-Type": "application/json"}
         json_data = {
             "password": self.password,
@@ -111,11 +123,10 @@ class OilFox:
             return False
 
     async def get_access_token(self):
-        """Update Access Token"""
+        """Update Access Token."""
         data = {
             "refresh_token": self.refresh_token,
         }
-
         async with aiohttp.ClientSession() as session, session.post(
             self.token_url, data=data, timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
         ) as response:
