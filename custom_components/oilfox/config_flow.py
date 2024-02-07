@@ -3,28 +3,22 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN, TIMEOUT, CONF_HTTP_TIMEOUT, CONF_EMAIL, CONF_PASSWORD
 from .OilFox import OilFox
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
-    {vol.Required(CONF_EMAIL): str, vol.Required(CONF_PASSWORD): str}
-)
-
-OPTIONS_SCHEMA = vol.Schema(
     {
-        vol.Optional(CONF_HTTP_TIMEOUT, default=TIMEOUT): vol.All(
-            vol.Coerce(int), vol.Clamp(min=5, max=60)
-        )
+        vol.Required("email"): str,
+        vol.Required("password"): str,
     }
 )
 
@@ -35,7 +29,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    my_oilfox = OilFox(data[CONF_EMAIL], data[CONF_PASSWORD], "")
+    my_oilfox = OilFox(data["email"], data["password"], "")
 
     if not await my_oilfox.test_connection():
         _LOGGER.info("Tests for OilFox: Connection failed")
@@ -47,7 +41,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise InvalidAuth
     _LOGGER.debug("Tests for OilFox: Authentication successful")
 
-    return {"title": "OilFox", "email": data[CONF_EMAIL]}
+    return {"title": "OilFox", "email": data["email"]}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -66,7 +60,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
 
-        await self.async_set_unique_id(user_input[CONF_EMAIL])
+        await self.async_set_unique_id(user_input["email"])
         self._abort_if_unique_id_configured()
 
         try:
@@ -80,7 +74,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "unknown"
         else:
             return self.async_create_entry(
-                title=info["title"] + ":" + info[CONF_EMAIL], data=user_input
+                title=info["title"] + ":" + info["email"], data=user_input
             )
 
         return self.async_show_form(
@@ -140,7 +134,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
         )
-
 
 class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
