@@ -14,7 +14,8 @@ class OilFox:
     """OilFox Python Class."""
 
     # https://github.com/foxinsights/customer-api
-    TIMEOUT = 30
+    TIMEOUT = 300
+    POLL_INTERVAL = 30
     TOKEN_VALID = 900
     hwid: str = ""
     password: str = ""
@@ -27,16 +28,21 @@ class OilFox:
     device_url = base_url + "/customer-api/v1/device/"
     token_url = base_url + "/customer-api/v1/token"
 
-    def __init__(self, email, password, hwid, timeout=30):
+    def __init__(self, email, password, hwid, timeout=300, poll_interval=30):
         """Init Method for OilFox Class."""
         self.email = email
         self.password = password
         self.hwid = hwid
         self.TIMEOUT = timeout
+        self.POLL_INTERVAL = poll_interval
         self.state = None
-        _LOGGER.info(
-            "Init OilFox with Username %s and http-timeout %s", self.email, self.TIMEOUT
-        )
+        #if self.hwid is None or self.hwid == "":
+        #    _LOGGER.info(
+        #        "Init OilFox with Username %s",
+        #        self.email,
+        #        self.TIMEOUT,
+        #        self.POLL_INTERVAL,
+        #    )
 
     async def test_connection(self):
         """Test connection to OilFox Api."""
@@ -79,10 +85,10 @@ class OilFox:
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
-                except asyncio.TimeoutError:
-                    raise ConfigEntryNotReady(  # noqa: TRY200
-                        f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
-                    )
+                # except asyncio.TimeoutError:
+                #    raise ConfigEntryNotReady(  # noqa: TRY200
+                #        f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
+                #    )
 
                 except Exception as err:
                     _LOGGER.error(

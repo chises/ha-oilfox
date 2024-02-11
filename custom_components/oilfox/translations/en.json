@@ -21,9 +21,10 @@
         "step": {
             "init": {
                 "data": {
-                    "http-timeout": "HTTP Timeout in seconds"
+                    "http-timeout": "HTTP Timeout in seconds",
+                    "poll-interval": "Poll frequency in minutes"
                 },
-                "description": "",
+                "description": "OilFox Integration Options",
                 "title": "OilFox Options"
             }
         }

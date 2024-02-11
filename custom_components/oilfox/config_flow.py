@@ -11,21 +11,21 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN, TIMEOUT, CONF_HTTP_TIMEOUT, CONF_EMAIL, CONF_PASSWORD
+from .const import (
+    DOMAIN,
+    POLL_INTERVAL,
+    TIMEOUT,
+    CONF_HTTP_TIMEOUT,
+    CONF_POLL_INTERVAL,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+)
 from .OilFox import OilFox
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {vol.Required(CONF_EMAIL): str, vol.Required(CONF_PASSWORD): str}
-)
-
-OPTIONS_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_HTTP_TIMEOUT, default=TIMEOUT): vol.All(
-            vol.Coerce(int), vol.Clamp(min=5, max=60)
-        )
-    }
 )
 
 
@@ -122,12 +122,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage the options."""
         timeout = TIMEOUT
+        poll_interval = POLL_INTERVAL
         if user_input is not None:
             # _LOGGER.info("Option Flow 2:%s", repr(user_input))
             return self.async_create_entry(title="", data=user_input)
 
-        if "http-timeout" in self.options:
-            timeout = self.options["http-timeout"]
+        if CONF_HTTP_TIMEOUT in self.options:
+            timeout = self.options[CONF_HTTP_TIMEOUT]
+        if CONF_POLL_INTERVAL in self.options:
+            poll_interval = self.options[CONF_POLL_INTERVAL]
 
         return self.async_show_form(
             step_id="init",
@@ -136,7 +139,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_HTTP_TIMEOUT,
                         default=timeout,
-                    ): int
+                    ): vol.All(vol.Coerce(int), vol.Clamp(min=5, max=300)),
+                    vol.Required(
+                        CONF_POLL_INTERVAL,
+                        default=poll_interval,
+                    ): vol.All(vol.Coerce(int), vol.Clamp(min=1, max=300)),
                 }
             ),
         )

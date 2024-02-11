@@ -22,7 +22,8 @@
       "init": {
         "title": "OilFox Options",
         "data": {
-          "http-timeout": "HTTP Timeout in seconds"
+          "http-timeout": "HTTP Timeout in seconds",
+          "poll-interval": "Poll frequency in minutes"
         },
         "description": "OilFox Integration Options"
       }

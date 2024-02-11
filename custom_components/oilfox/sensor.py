@@ -6,8 +6,9 @@ import logging
 
 import voluptuous as vol
 
+from datetime import timedelta
 from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
+    # PLATFORM_SCHEMA,
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
@@ -30,7 +31,15 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import TIMEOUT, CONF_EMAIL, CONF_PASSWORD, CONF_HTTP_TIMEOUT, DOMAIN
+from .const import (
+    TIMEOUT,
+    POLL_INTERVAL,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_HTTP_TIMEOUT,
+    DOMAIN,
+    CONF_POLL_INTERVAL,
+)
 from .OilFox import OilFox
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,12 +128,12 @@ SENSORS = {
 }
 
 # Validation of the user's configuration
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_EMAIL): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
-    }
-)
+# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+#    {
+#        vol.Required(CONF_EMAIL): cv.string,
+#        vol.Required(CONF_PASSWORD): cv.string,
+#    }
+# )
 
 
 async def async_setup_platform(
@@ -173,7 +182,17 @@ async def async_setup_entry(
         timeout = TIMEOUT
         _LOGGER.info("Load default timeout value: %s", timeout)
 
+    if CONF_POLL_INTERVAL in config_entry.options:
+        poll_interval = config_entry.options[CONF_POLL_INTERVAL]
+        _LOGGER.info(
+            "Load custom poll interval: %s", config_entry.options[CONF_POLL_INTERVAL]
+        )
+    else:
+        poll_interval = POLL_INTERVAL
+        _LOGGER.info("Load default poll intervall: %s", poll_interval)
+
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator.update_interval = timedelta(minutes=poll_interval)
     _LOGGER.debug("OilFox Coordinator Data Result: %s", repr(coordinator.data))
     if coordinator.data is None or coordinator.data is False:
         raise ConfigEntryNotReady(
@@ -195,7 +214,8 @@ async def async_setup_entry(
                     email,
                     password,
                     oilfox_device["hwid"],
-                    timeout=config_entry.options[CONF_HTTP_TIMEOUT],
+                    timeout=timeout,
+                    poll_interval=poll_interval,
                 ),
                 sensor[1],
                 hass,
