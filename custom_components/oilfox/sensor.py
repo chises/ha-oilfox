@@ -7,6 +7,7 @@ import logging
 import voluptuous as vol
 
 from datetime import timedelta
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     # PLATFORM_SCHEMA,
     SensorDeviceClass,
@@ -93,6 +94,14 @@ SENSORS = {
         None,
         None,
     ],
+    "validationErrorStatus": [
+        "validationErrorStatus",
+        None,
+        "mdi:alert-circle",
+        "validationErrorStatus",
+        BinarySensorDeviceClass.PROBLEM,
+        None,
+    ],
     "currentMeteringAt": [
         "currentMeteringAt",
         None,
@@ -126,15 +135,6 @@ SENSORS = {
         SensorStateClass.TOTAL_INCREASING,
     ],
 }
-
-# Validation of the user's configuration
-# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-#    {
-#        vol.Required(CONF_EMAIL): cv.string,
-#        vol.Required(CONF_PASSWORD): cv.string,
-#    }
-# )
-
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -221,7 +221,16 @@ async def async_setup_entry(
                 hass,
             )
             oilfox_sensor.set_api_response(oilfox_device)
-            if sensor[0] in oilfox_device:
+            if sensor[0] == "validationErrorStatus":
+                if "validationError" in oilfox_device:
+                    _LOGGER.debug(
+                        "Prefill entity %s with %s",
+                        sensor[0],
+                        "True",
+                    )
+                    oilfox_sensor.set_state(True)
+
+            elif sensor[0] in oilfox_device:
                 _LOGGER.debug(
                     "Prefill entity %s with %s",
                     sensor[0],
@@ -234,13 +243,13 @@ async def async_setup_entry(
                     sensor[0],
                 )
                 oilfox_sensor.set_state("No Error")
-            elif sensor[0] == "usageCounter":
+            elif sensor[0] == "validationErrorStatus":
                 _LOGGER.debug(
-                    'Prefill entity %s with "0"',
+                    'Prefill entity %s with "False"',
                     sensor[0],
                 )
-                oilfox_sensor.set_state(float(0))
-            elif sensor[0] == "usageCounterQuantity":
+                oilfox_sensor.set_state(False)
+            elif sensor[0] == "usageCounter" or sensor[0] == "usageCounterQuantity":
                 _LOGGER.debug(
                     'Prefill entity %s with "0"',
                     sensor[0],
@@ -352,6 +361,14 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                         self._state = self.battery_mapping[
                             oilfox_device[self.sensor[0]]
                         ]
+                    elif self.sensor[0] == "validationError":
+                        self._state = (
+                            oilfox_device[self.sensor[0]]
+                            + ":"
+                            + self.validation_error_mapping[
+                                oilfox_device[self.sensor[0]]
+                            ]
+                        )
                     else:
                         self._state = oilfox_device[self.sensor[0]]
 
@@ -362,6 +379,12 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                     }
                 elif self.sensor[0] == "validationError":
                     self._state = "No Error"
+                elif self.sensor[0] == "validationErrorStatus":
+                    self._state = False
+                    if "validationError" in oilfox_device:
+                        self._state = True
+                    else:
+                        self._state = False
                 elif self.sensor[0] == "usageCounter":
                     _LOGGER.debug(
                         "Update for usageCounter current val %s and filled: %s",
@@ -375,9 +398,9 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                             self._extra_state_attributes["Current Value"] is None
                             or self._extra_state_attributes["Current Value"] == 0
                         ):
-                            self._extra_state_attributes[
-                                "Previous Value"
-                            ] = self._extra_state_attributes["Current Value"]
+                            self._extra_state_attributes["Previous Value"] = (
+                                self._extra_state_attributes["Current Value"]
+                            )
                             self._extra_state_attributes["Current Value"] = float(
                                 oilfox_device.get("fillLevelQuantity")
                             )
@@ -388,12 +411,12 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                             )
                             self._state = 0
                         else:
-                            self._extra_state_attributes[
-                                "Previous Value"
-                            ] = self._extra_state_attributes["Current Value"]
-                            self._extra_state_attributes[
-                                "Current Value"
-                            ] = oilfox_device.get("fillLevelQuantity")
+                            self._extra_state_attributes["Previous Value"] = (
+                                self._extra_state_attributes["Current Value"]
+                            )
+                            self._extra_state_attributes["Current Value"] = (
+                                oilfox_device.get("fillLevelQuantity")
+                            )
 
                             if self._extra_state_attributes["Previous Value"] > float(
                                 self._extra_state_attributes["Current Value"]
@@ -430,9 +453,9 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                             self._extra_state_attributes["Current Value"] is None
                             or self._extra_state_attributes["Current Value"] == 0
                         ):
-                            self._extra_state_attributes[
-                                "Previous Value"
-                            ] = self._extra_state_attributes["Current Value"]
+                            self._extra_state_attributes["Previous Value"] = (
+                                self._extra_state_attributes["Current Value"]
+                            )
                             self._extra_state_attributes["Current Value"] = float(
                                 oilfox_device.get("fillLevelQuantity")
                             )
@@ -443,12 +466,12 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
                             )
                             self._state = 0
                         else:
-                            self._extra_state_attributes[
-                                "Previous Value"
-                            ] = self._extra_state_attributes["Current Value"]
-                            self._extra_state_attributes[
-                                "Current Value"
-                            ] = oilfox_device.get("fillLevelQuantity")
+                            self._extra_state_attributes["Previous Value"] = (
+                                self._extra_state_attributes["Current Value"]
+                            )
+                            self._extra_state_attributes["Current Value"] = (
+                                oilfox_device.get("fillLevelQuantity")
+                            )
 
                             if self._extra_state_attributes["Previous Value"] > float(
                                 self._extra_state_attributes["Current Value"]
@@ -492,11 +515,13 @@ class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
     def set_state(self, state):
         """Set state manual."""
         if state is not None and state != "":
-            _LOGGER.debug("Set new state %s for sensor %s", state, self.sensor[0])
             if self.sensor[0] == "batteryLevel":
                 self._state = self.battery_mapping[state]
+            elif self.sensor[0] == "validationError":
+                self._state = state + ":" + self.validation_error_mapping[state]
             else:
                 self._state = state
+            _LOGGER.debug("Set new state %s for sensor %s", self._state, self.sensor[0])
 
     @property
     def icon(self) -> str:

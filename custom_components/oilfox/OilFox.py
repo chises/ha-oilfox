@@ -1,4 +1,5 @@
 """Oilfox API Class."""
+
 import asyncio
 import logging
 import time
@@ -36,19 +37,15 @@ class OilFox:
         self.TIMEOUT = timeout
         self.POLL_INTERVAL = poll_interval
         self.state = None
-        #if self.hwid is None or self.hwid == "":
-        #    _LOGGER.info(
-        #        "Init OilFox with Username %s",
-        #        self.email,
-        #        self.TIMEOUT,
-        #        self.POLL_INTERVAL,
-        #    )
 
     async def test_connection(self):
         """Test connection to OilFox Api."""
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
-        ) as session, session.get(self.base_url) as response:
+        async with (
+            aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
+            ) as session,
+            session.get(self.base_url) as response,
+        ):
             if response.status == 200:
                 return True
             return False
@@ -85,10 +82,6 @@ class OilFox:
                     ) as response:
                         if response.status == 200:
                             self.state = await response.json()
-                # except asyncio.TimeoutError:
-                #    raise ConfigEntryNotReady(  # noqa: TRY200
-                #        f"Update values failed because of http timeout (waited for {self.TIMEOUT} s)!"
-                #    )
 
                 except Exception as err:
                     _LOGGER.error(
@@ -110,12 +103,15 @@ class OilFox:
             "email": self.email,
         }
 
-        async with aiohttp.ClientSession() as session, session.post(
-            self.login_url,
-            headers=headers,
-            json=json_data,
-            timeout=aiohttp.ClientTimeout(total=self.TIMEOUT),
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                self.login_url,
+                headers=headers,
+                json=json_data,
+                timeout=aiohttp.ClientTimeout(total=self.TIMEOUT),
+            ) as response,
+        ):
             if response.status == 200:
                 json_response = await response.json()
                 self.access_token = json_response["access_token"]
@@ -133,9 +129,14 @@ class OilFox:
         data = {
             "refresh_token": self.refresh_token,
         }
-        async with aiohttp.ClientSession() as session, session.post(
-            self.token_url, data=data, timeout=aiohttp.ClientTimeout(total=self.TIMEOUT)
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                self.token_url,
+                data=data,
+                timeout=aiohttp.ClientTimeout(total=self.TIMEOUT),
+            ) as response,
+        ):
             _LOGGER.debug("Get Access Token:%s", response.status)
             if response.status == 200:
                 json_response = await response.json()
