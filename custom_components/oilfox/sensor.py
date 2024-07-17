@@ -7,6 +7,9 @@ import logging
 import voluptuous as vol
 
 from datetime import timedelta
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+)
 from homeassistant.components.sensor import (
     # PLATFORM_SCHEMA,
     SensorDeviceClass,
@@ -166,9 +169,9 @@ async def async_setup_entry(
     oilfox_devices = coordinator.data["items"]
     entities = []
     for oilfox_device in oilfox_devices:
-        _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
+        _LOGGER.debug("OilFox: Found Device in API: %s", oilfox_device["hwid"])
         for sensor in SENSORS.items():
-            _LOGGER.debug(
+            _LOGGER.info(
                 "OilFox: Create Sensor %s for Device %s",
                 sensor[0],
                 oilfox_device["hwid"],
@@ -217,9 +220,12 @@ async def async_setup_entry(
                     sensor[0],
                 )
             oilfox_sensor.set_state("")
+            _LOGGER.debug(
+				"Set Sensor States...",
+				sensor[0],
+			)
             entities.append(oilfox_sensor)
     async_add_entities(entities)
-
 
 class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
     """OilFox Sensor Class."""
