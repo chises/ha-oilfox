@@ -52,31 +52,6 @@ BINARY_SENSORS = {
     ],
 }
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up OilFox sensor."""
-
-    @callback
-    def schedule_import(_):
-        """Schedule delayed import after HA is fully started."""
-        async_call_later(hass, 10, do_import)
-
-    @callback
-    def do_import(_):
-        """Process YAML import."""
-        _LOGGER.warning("Import yaml configration settings into config flow")
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": SOURCE_IMPORT}, data=dict(config)
-            )
-        )
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, schedule_import)
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
