@@ -110,6 +110,7 @@ async def async_setup_entry(
                 binary_sensor[1],
                 hass,
             )
+
             oilfox_binary_sensor.set_api_response(oilfox_device)
             if binary_sensor[0] == "validationErrorStatus":
                 if "validationError" in oilfox_device:
@@ -118,19 +119,14 @@ async def async_setup_entry(
                         binary_sensor[0],
                         "True",
                     )
-                    oilfox_binary_sensor.set_state(True)
-                elif binary_sensor[0] == "validationErrorStatus":
-                    _LOGGER.debug(
-                        'Prefill entity %s with "False"',
-                        binary_sensor[0],
-                    )
-                    oilfox_binary_sensor.set_state(False)
+                    oilfox_binary_sensor._is_on = True
                 else:
                     _LOGGER.debug(
-                        "Prefill entity %s with empty value",
-                        sensor[0],
+                        "Prefill entity %s with %s",
+                        binary_sensor[0],
+                        "False",
                     )
-                    oilfox_sensor.set_state("")
+                    oilfox_binary_sensor._is_on = False
                 entities.append(oilfox_binary_sensor)
     async_add_entities(entities)
 
@@ -144,7 +140,7 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
         self._attr_device_class = binary_sensor[4]
         self.binary_sensor = binary_sensor
         self.oilfox = element
-        self._state = None
+        self._is_on = None
         self.api_response: list[SensorStateClass]
         self._extra_state_attributes = {}
 
@@ -156,16 +152,16 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
             if oilfox_device["hwid"] == self.oilfox.hwid:
                 self.set_api_response(oilfox_device)
                 if self.binary_sensor[0] == "validationErrorStatus":
-                    self._state = False
+                    self._is_on = False
                     if "validationError" in oilfox_device:
-                        self._state = True
+                        self._is_on = True
                     else:
-                        self._state = False
+                        self._is_on = False
             _LOGGER.debug(
                 "Update entity %s for HWID %s with value: %s",
                 self.binary_sensor[0],
                 self.oilfox.hwid,
-                self._state,
+                self._is_on,
             )
             self.async_write_ha_state()
             return None
@@ -188,15 +184,6 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
         """Set API response manual."""
         self.api_response = response
 
-    def set_state(self, state):
-        """Set state manual."""
-        if state is not None and state != "":
-            if self.binary_sensor[0] == "validationError":
-                self._state = state + ":" + self.validation_error_mapping[state]
-            else:
-                self._state = state
-            _LOGGER.debug("Set new state %s for sensor %s", self._state, self.binary_sensor[0])
-
     @property
     def icon(self) -> str:
         """Return the name of the sensor."""
@@ -205,6 +192,8 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
     @property
     def unique_id(self) -> str:
         """Return the unique_id of the sensor."""
+
+        """Dirty workaround: entites meteringAt did use self.sensor[3] instead of self.sensor[0] as ID before ha-oilfox version 0.1.8"""
         return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[0]
 
     @property
@@ -213,9 +202,9 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
         return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[3]
 
     @property
-    def state(self) -> str:
+    def is_on(self) -> None:
         """Return the state of the sensor."""
-        return self._state
+        return self._is_on
 
     @property
     def device_info(self) -> DeviceInfo:
