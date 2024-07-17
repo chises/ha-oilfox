@@ -7,9 +7,6 @@ import logging
 import voluptuous as vol
 
 from datetime import timedelta
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-)
 from homeassistant.components.sensor import (
     # PLATFORM_SCHEMA,
     SensorDeviceClass,
