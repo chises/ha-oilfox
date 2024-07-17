@@ -46,7 +46,7 @@ BINARY_SENSORS = {
         "validationErrorStatus",
         None,
         "mdi:alert-circle",
-        "validationError",
+        "validationErrorStatus",
         BinarySensorDeviceClass.PROBLEM,
         None,
     ],
@@ -92,13 +92,13 @@ async def async_setup_entry(
     entities = []
     for oilfox_device in oilfox_devices:
         _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
-        for sensor in BINARY_SENSORS.items():
+        for binary_sensor in BINARY_SENSORS.items():
             _LOGGER.debug(
-                "OilFox: Create Sensor %s for Device %s",
-                sensor[0],
+                "OilFox: Create Binary-Sensor %s for Device %s",
+                binary_sensor[0],
                 oilfox_device["hwid"],
             )
-            oilfox_sensor = OilFoxBinarySensor(
+            oilfox_binary_sensor = OilFoxBinarySensor(
                 coordinator,
                 OilFox(
                     email,
@@ -107,78 +107,42 @@ async def async_setup_entry(
                     timeout=timeout,
                     poll_interval=poll_interval,
                 ),
-                sensor[1],
+                binary_sensor[1],
                 hass,
             )
-            oilfox_sensor.set_api_response(oilfox_device)
-            if sensor[0] == "validationErrorStatus":
+            oilfox_binary_sensor.set_api_response(oilfox_device)
+            if binary_sensor[0] == "validationErrorStatus":
                 if "validationError" in oilfox_device:
                     _LOGGER.debug(
                         "Prefill entity %s with %s",
-                        sensor[0],
+                        binary_sensor[0],
                         "True",
                     )
-                    oilfox_sensor.set_state(True)
-
-            elif sensor[0] in oilfox_device:
-                _LOGGER.debug(
-                    "Prefill entity %s with %s",
-                    sensor[0],
-                    oilfox_device[sensor[0]],
-                )
-                oilfox_sensor.set_state(oilfox_device[sensor[0]])
-            elif sensor[0] == "validationError":
-                _LOGGER.debug(
-                    'Prefill entity %s with "No Error"',
-                    sensor[0],
-                )
-                oilfox_sensor.set_state("No Error")
-            elif sensor[0] == "validationErrorStatus":
-                _LOGGER.debug(
-                    'Prefill entity %s with "False"',
-                    sensor[0],
-                )
-                oilfox_sensor.set_state(False)
-            else:
-                _LOGGER.debug(
-                    "Prefill entity %s with empty value",
-                    sensor[0],
-                )
-            oilfox_sensor.set_state("")
-            entities.append(oilfox_sensor)
+                    oilfox_binary_sensor.set_state(True)
+                elif binary_sensor[0] == "validationErrorStatus":
+                    _LOGGER.debug(
+                        'Prefill entity %s with "False"',
+                        binary_sensor[0],
+                    )
+                    oilfox_binary_sensor.set_state(False)
+                else:
+                    _LOGGER.debug(
+                        "Prefill entity %s with empty value",
+                        sensor[0],
+                    )
+                    oilfox_sensor.set_state("")
+                entities.append(oilfox_binary_sensor)
     async_add_entities(entities)
 
 class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
     """OilFox BinarySensor Class."""
 
-    api_response: str = ""
-    oilfox: OilFox
-    sensor: list[SensorStateClass]
-    battery_mapping = {
-        "FULL": 100,
-        "GOOD": 70,
-        "MEDIUM": 50,
-        "WARNING": 20,
-        "CRITICAL": 0,
-    }
-    validation_error_mapping = {
-        "NO_METERING": "No measurement yet",
-        "EMPTY_METERING": "Incorrect Measurement",
-        "NO_EXTRACTED_VALUE": "No fill level detected",
-        "SENSOR_CONFIG": "Faulty measurement",
-        "MISSING_STORAGE_CONFIG": "Storage configuration missing",
-        "INVALID_STORAGE_CONFIG": "Incorrect storage configuration",
-        "DISTANCE_TOO_SHORT": "Measured distance too small",
-        "ABOVE_STORAGE_MAX": "Storage full",
-        "BELOW_STORAGE_MIN": "Calculated filling level implausible",
-    }
-
-    def __init__(self, coordinator, element, sensor, hass):
-        """Init for OilFoxSensor."""
+    def __init__(self, coordinator, element, binary_sensor, hass):
+        """Init for OilFoxBinarySensor."""
         super().__init__(coordinator)
         self._hass = hass
-        self._attr_device_class = sensor[4]
-        self.sensor = sensor
+        self._attr_device_class = binary_sensor[4]
+        self.binary_sensor = binary_sensor
         self.oilfox = element
         self._state = None
         self.api_response: list[SensorStateClass]
@@ -191,7 +155,7 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
         for oilfox_device in oilfox_devices:
             if oilfox_device["hwid"] == self.oilfox.hwid:
                 self.set_api_response(oilfox_device)
-                if self.sensor[0] == "validationErrorStatus":
+                if self.binary_sensor[0] == "validationErrorStatus":
                     self._state = False
                     if "validationError" in oilfox_device:
                         self._state = True
@@ -199,7 +163,7 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
                         self._state = False
             _LOGGER.debug(
                 "Update entity %s for HWID %s with value: %s",
-                self.sensor[0],
+                self.binary_sensor[0],
                 self.oilfox.hwid,
                 self._state,
             )
@@ -227,49 +191,31 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
     def set_state(self, state):
         """Set state manual."""
         if state is not None and state != "":
-            if self.sensor[0] == "batteryLevel":
-                self._state = self.battery_mapping[state]
-            elif self.sensor[0] == "validationError":
+            if self.binary_sensor[0] == "validationError":
                 self._state = state + ":" + self.validation_error_mapping[state]
             else:
                 self._state = state
-            _LOGGER.debug("Set new state %s for sensor %s", self._state, self.sensor[0])
+            _LOGGER.debug("Set new state %s for sensor %s", self._state, self.binary_sensor[0])
 
     @property
     def icon(self) -> str:
         """Return the name of the sensor."""
-        return self.sensor[2]
+        return self.binary_sensor[2]
 
     @property
     def unique_id(self) -> str:
         """Return the unique_id of the sensor."""
-
-        """Dirty workaround: entites meteringAt did use self.sensor[3] instead of self.sensor[0] as ID before ha-oilfox version 0.1.8"""
-        if self.sensor[0] == "currentMeteringAt":
-            return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
-        if self.sensor[0] == "nextMeteringAt":
-            return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
-        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[0]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[0]
 
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.sensor[3]
+        return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[3]
 
     @property
     def state(self) -> str:
         """Return the state of the sensor."""
         return self._state
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
-        return self.sensor[1]
-
-    @property
-    def state_class(self) -> SensorStateClass:
-        """Return the state class."""
-        return self.sensor[5]
 
     @property
     def device_info(self) -> DeviceInfo:
