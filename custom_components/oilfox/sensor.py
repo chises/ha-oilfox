@@ -127,41 +127,6 @@ SENSORS = {
     ],
 }
 
-# Validation of the user's configuration
-# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-#    {
-#        vol.Required(CONF_EMAIL): cv.string,
-#        vol.Required(CONF_PASSWORD): cv.string,
-#    }
-# )
-
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up OilFox sensor."""
-
-    @callback
-    def schedule_import(_):
-        """Schedule delayed import after HA is fully started."""
-        async_call_later(hass, 10, do_import)
-
-    @callback
-    def do_import(_):
-        """Process YAML import."""
-        _LOGGER.warning("Import yaml configration settings into config flow")
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": SOURCE_IMPORT}, data=dict(config)
-            )
-        )
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, schedule_import)
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -201,9 +166,9 @@ async def async_setup_entry(
     oilfox_devices = coordinator.data["items"]
     entities = []
     for oilfox_device in oilfox_devices:
-        _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
+        _LOGGER.debug("OilFox: Found Device in API: %s", oilfox_device["hwid"])
         for sensor in SENSORS.items():
-            _LOGGER.debug(
+            _LOGGER.info(
                 "OilFox: Create Sensor %s for Device %s",
                 sensor[0],
                 oilfox_device["hwid"],
@@ -252,9 +217,12 @@ async def async_setup_entry(
                     sensor[0],
                 )
             oilfox_sensor.set_state("")
+            _LOGGER.debug(
+				"Set Sensor States...",
+				sensor[0],
+			)
             entities.append(oilfox_sensor)
     async_add_entities(entities)
-
 
 class OilFoxSensor(CoordinatorEntity, SensorEntity, RestoreEntity):
     """OilFox Sensor Class."""
