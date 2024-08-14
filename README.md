@@ -75,3 +75,8 @@ BELOW_STORAGE_MIN = Calculated filling level implausible
 This component is using the official [OilFox customer Api](https://github.com/foxinsights/customer-api)
 
 As this is my first homeassistant component there is a lot to impove. If I have time I will try to get this component more to the [homeassisant recommendations](https://developers.home-assistant.io/docs/creating_component_code_review/)
+
+## Contributors
+<a href="https://github.com/OWNER/REPO/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=chises/ha-oilfox" />
+</a>
