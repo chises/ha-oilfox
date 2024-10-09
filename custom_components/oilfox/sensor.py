@@ -122,7 +122,7 @@ SENSORS = {
         UnitOfVolume.LITERS,
         "mdi:barrel-outline",
         "usageCounterQuantity",
-        SensorDeviceClass.VOLUME_STORAGE,
+        SensorDeviceClass.VOLUME,
         SensorStateClass.TOTAL_INCREASING,
     ],
 }
