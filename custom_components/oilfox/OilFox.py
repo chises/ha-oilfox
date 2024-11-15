@@ -25,7 +25,7 @@ class OilFox:
     update_token: int = 0
     base_url = "https://api.oilfox.io"
     login_url = base_url + "/customer-api/v1/login"
-    device_url = base_url + "/customer-api/v1/device/"
+    device_url = base_url + "/customer-api/v1/device"
     token_url = base_url + "/customer-api/v1/token"
 
     def __init__(self, email, password, hwid, timeout=300, poll_interval=30):
