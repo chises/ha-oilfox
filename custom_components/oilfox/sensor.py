@@ -8,7 +8,6 @@ import voluptuous as vol
 
 from datetime import timedelta
 from homeassistant.components.sensor import (
-    # PLATFORM_SCHEMA,
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
@@ -74,7 +73,7 @@ SENSORS = {
         UnitOfTime.DAYS,
         "mdi:calendar-range",
         "daysReach",
-        None,
+        SensorDeviceClass.DURATION,
         None,
     ],
     "batteryLevel": [
