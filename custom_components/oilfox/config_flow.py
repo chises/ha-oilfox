@@ -1,4 +1,5 @@
 """Config flow for OilFox integration."""
+
 from __future__ import annotations
 
 import logging
@@ -12,13 +13,13 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
+    CONF_EMAIL,
+    CONF_HTTP_TIMEOUT,
+    CONF_PASSWORD,
+    CONF_POLL_INTERVAL,
     DOMAIN,
     POLL_INTERVAL,
     TIMEOUT,
-    CONF_HTTP_TIMEOUT,
-    CONF_POLL_INTERVAL,
-    CONF_EMAIL,
-    CONF_PASSWORD,
 )
 from .OilFox import OilFox
 
@@ -114,8 +115,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
+        # self.config_entry = config_entry
+        # self.options = dict(config_entry.options)
+        super().__init__()
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

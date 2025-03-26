@@ -2,55 +2,50 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 import logging
 
-import voluptuous as vol
-
-from datetime import timedelta
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    TIMEOUT,
-    POLL_INTERVAL,
     CONF_EMAIL,
-    CONF_PASSWORD,
     CONF_HTTP_TIMEOUT,
-    DOMAIN,
+    CONF_PASSWORD,
     CONF_POLL_INTERVAL,
+    DOMAIN,
+    POLL_INTERVAL,
+    TIMEOUT,
 )
 from .OilFox import OilFox
 
 _LOGGER = logging.getLogger(__name__)
 
 BINARY_SENSORS = {
-    # index 0 = API Name & unique ID
-    # index 1 = units of measurement
-    # index 2 = icon
-    # index 3 = HA friendly name
-    # index 4 = device class
-    # index 5 = state class
-    "validationErrorStatus": [
-        "validationErrorStatus",
-        None,
-        "mdi:alert-circle",
-        "validationErrorStatus",
-        BinarySensorDeviceClass.PROBLEM,
-        None,
-    ],
+    "validationErrorStatus": {
+        "id": "validationErrorStatus",
+        "api": "validationErrorStatus",
+        "icon": "mdi:alert-circle",
+        "name": "ValidationErrorStatus",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+    },
+    "batteryLevelStatus": {
+        "id": "batteryLevelStatus",
+        "api": "batteryLevel",
+        "icon": "mdi:battery-alert",
+        "name": "batteryLevelStatus",
+        "device_class": BinarySensorDeviceClass.BATTERY,
+    },
 }
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -63,39 +58,30 @@ async def async_setup_entry(
     email = config_entry.data[CONF_EMAIL]
     password = config_entry.data[CONF_PASSWORD]
 
-    if CONF_HTTP_TIMEOUT in config_entry.options:
-        timeout = config_entry.options[CONF_HTTP_TIMEOUT]
-        _LOGGER.info(
-            "Load custom timeout value: %s", config_entry.options[CONF_HTTP_TIMEOUT]
-        )
-    else:
-        timeout = TIMEOUT
-        _LOGGER.info("Load default timeout value: %s", timeout)
+    timeout = config_entry.options.get(CONF_HTTP_TIMEOUT, TIMEOUT)
+    _LOGGER.info("Timeout value: %s", timeout)
 
-    if CONF_POLL_INTERVAL in config_entry.options:
-        poll_interval = config_entry.options[CONF_POLL_INTERVAL]
-        _LOGGER.info(
-            "Load custom poll interval: %s", config_entry.options[CONF_POLL_INTERVAL]
-        )
-    else:
-        poll_interval = POLL_INTERVAL
-        _LOGGER.info("Load default poll intervall: %s", poll_interval)
+    poll_interval = config_entry.options.get(CONF_POLL_INTERVAL, POLL_INTERVAL)
+    _LOGGER.info("Poll interval: %s", poll_interval)
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     coordinator.update_interval = timedelta(minutes=poll_interval)
     _LOGGER.debug("OilFox Coordinator Data Result: %s", repr(coordinator.data))
+
     if coordinator.data is None or coordinator.data is False:
         raise ConfigEntryNotReady(
-            "Error on Coordinator Data Result: " + repr(coordinator.data)
+            f"Error on Coordinator Data Result: {repr(coordinator.data)}"
         )
+
     oilfox_devices = coordinator.data["items"]
     entities = []
+
     for oilfox_device in oilfox_devices:
         _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
-        for binary_sensor in BINARY_SENSORS.items():
-            _LOGGER.debug(
-                "OilFox: Create Binary-Sensor %s for Device %s",
-                binary_sensor[0],
+        for sensor_key, sensor_details in BINARY_SENSORS.items():
+            _LOGGER.info(
+                "OilFox: Create Sensor %s for Device %s",
+                sensor_key,
                 oilfox_device["hwid"],
             )
             oilfox_binary_sensor = OilFoxBinarySensor(
@@ -107,42 +93,55 @@ async def async_setup_entry(
                     timeout=timeout,
                     poll_interval=poll_interval,
                 ),
-                binary_sensor[1],
-                hass,
+                sensor_details,
             )
 
             oilfox_binary_sensor.set_api_response(oilfox_device)
-            if binary_sensor[0] == "validationErrorStatus":
-                if "validationError" in oilfox_device:
-                    _LOGGER.debug(
-                        "Prefill entity %s with %s",
-                        binary_sensor[0],
-                        "True",
-                    )
-                    oilfox_binary_sensor._is_on = True
-                else:
-                    _LOGGER.debug(
-                        "Prefill entity %s with %s",
-                        binary_sensor[0],
-                        "False",
-                    )
-                    oilfox_binary_sensor._is_on = False
-                entities.append(oilfox_binary_sensor)
+
+            if sensor_key == "batteryLevelStatus":
+                state = oilfox_device[sensor_details["api"]] in {"WARNING", "CRITICAL"}
+            elif sensor_key == "validationErrorStatus":
+                state = "validationError" in oilfox_device
+            oilfox_binary_sensor.set_state(state)
+            _LOGGER.debug(
+                "Prefill entity %s with %s",
+                sensor_key,
+                state,
+            )
+
+            entities.append(oilfox_binary_sensor)
+
     async_add_entities(entities)
 
-class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
+
+class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """OilFox BinarySensor Class."""
 
-    def __init__(self, coordinator, element, binary_sensor, hass):
+    def __init__(
+        self,
+        coordinator: CoordinatorEntity,
+        oilfox: OilFox,
+        sensor_details: dict,
+    ) -> None:
         """Init for OilFoxBinarySensor."""
         super().__init__(coordinator)
-        self._hass = hass
-        self._attr_device_class = binary_sensor[4]
-        self.binary_sensor = binary_sensor
-        self.oilfox = element
-        self._is_on = None
-        self.api_response: list[SensorStateClass]
+        self.sensor_details = sensor_details
+        self.oilfox = oilfox
+        self.api_response = ""
+
+        self._attr_unique_id = f"OilFox-{self.oilfox.hwid}-{sensor_details['id']}"
+        self._attr_name = f"OilFox-{self.oilfox.hwid}-{sensor_details['name']}"
+        self._attr_device_class = sensor_details["device_class"]
+        # self._attr_state_class = sensor_details["state_class"]
+        self._attr_icon = sensor_details["icon"]
+        # self._attr_native_unit_of_measurement = sensor_details["native_unit"]
+        # self._attr_suggested_unit_of_measurement = sensor_details["suggested_unit"]
         self._extra_state_attributes = {}
+        self._attr_is_on = False
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -150,61 +149,40 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity, RestoreEntity):
         oilfox_devices = self.coordinator.data["items"]
         for oilfox_device in oilfox_devices:
             if oilfox_device["hwid"] == self.oilfox.hwid:
-                self.set_api_response(oilfox_device)
-                if self.binary_sensor[0] == "validationErrorStatus":
-                    self._is_on = False
-                    if "validationError" in oilfox_device:
-                        self._is_on = True
-                    else:
-                        self._is_on = False
-            _LOGGER.debug(
-                "Update entity %s for HWID %s with value: %s",
-                self.binary_sensor[0],
-                self.oilfox.hwid,
-                self._is_on,
-            )
+                if self.sensor_details["api"] == "validationErrorStatus":
+                    state = "validationError" in oilfox_device
+                elif self.sensor_details["api"] == "batteryLevel":
+                    state = oilfox_device[self.sensor_details["api"]] in {
+                        "WARNING",
+                        "CRITICAL",
+                    }
+                self.set_state(state)
             self.async_write_ha_state()
-            return None
-
-    @property
-    def extra_state_attributes(self):
-        """Get extra Attribute."""
-        return self._extra_state_attributes
+            return
 
     def set_api_response(self, response):
         """Set API response manual."""
         self.api_response = response
 
+    def set_state(self, state: bool) -> None:
+        """Set state manually."""
+        if state == self._attr_is_on:
+            _LOGGER.debug(
+                "Old and new state (%s) for sensor %s same, skip",
+                self._attr_is_on,
+                self.sensor_details["id"],
+            )
+            return
+        if state is not None and state != "":
+            _LOGGER.debug(
+                "Set new state %s for sensor %s", state, self.sensor_details["id"]
+            )
+            self._attr_is_on = state
+
     @property
     def extra_state_attributes(self):
         """Get extra Attribute."""
         return self._extra_state_attributes
-
-    def set_api_response(self, response):
-        """Set API response manual."""
-        self.api_response = response
-
-    @property
-    def icon(self) -> str:
-        """Return the name of the sensor."""
-        return self.binary_sensor[2]
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique_id of the sensor."""
-
-        """Dirty workaround: entites meteringAt did use self.sensor[3] instead of self.sensor[0] as ID before ha-oilfox version 0.1.8"""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[0]
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return "OilFox-" + self.oilfox.hwid + "-" + self.binary_sensor[3]
-
-    @property
-    def is_on(self) -> None:
-        """Return the state of the sensor."""
-        return self._is_on
 
     @property
     def device_info(self) -> DeviceInfo:
