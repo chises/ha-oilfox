@@ -247,7 +247,6 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
                 self.sensor_details["id"],
                 last_state.attributes,
             )
-            _LOGGER.info(last_state)
             self._extra_state_attributes = dict(last_state.attributes)
         #    self._attr_native_unit_of_measurement = last_state.attributes.get(
         #        "unit_of_measurement"
