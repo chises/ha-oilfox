@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import logging
+from typing import Any
 
 from homeassistant.components.sensor import (
     RestoreSensor,
     SensorDeviceClass,
+    SensorEntity,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -111,9 +113,8 @@ SENSORS = {
         "suggested_unit": None,
         "icon": "mdi:barrel",
         "name": "energyConsumption",
-        # "device_class": SensorDeviceClass.ENERGY,
-        "device_class": None,
-        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": None,
     },
     "usageCounterQuantity": {
         "id": "usageCounterQuantity",
@@ -122,9 +123,8 @@ SENSORS = {
         "suggested_unit": None,
         "icon": "mdi:barrel-outline",
         "name": "usageCounterQuantity",
-        # "device_class": SensorDeviceClass.VOLUME,
-        "device_class": None,
-        "state_class": SensorStateClass.TOTAL_INCREASING,
+        "device_class": SensorDeviceClass.VOLUME_STORAGE,
+        "state_class": None,
     },
 }
 
@@ -202,7 +202,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class OilFoxSensor(CoordinatorEntity, RestoreSensor):
+class OilFoxSensor(CoordinatorEntity, RestoreSensor, SensorEntity):
     """OilFox Sensor Class."""
 
     battery_mapping = {
@@ -224,7 +224,6 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
         self.sensor_details = sensor_details
         self.oilfox = oilfox
         self.api_response = ""
-
         self._attr_unique_id = f"OilFox-{self.oilfox.hwid}-{sensor_details['id']}"
         self._attr_name = f"OilFox-{self.oilfox.hwid}-{sensor_details['name']}"
         self._attr_device_class = sensor_details["device_class"]
@@ -232,28 +231,54 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
         self._attr_icon = sensor_details["icon"]
         self._attr_native_unit_of_measurement = sensor_details["native_unit"]
         self._attr_suggested_unit_of_measurement = sensor_details["suggested_unit"]
-        self._extra_state_attributes = {}
+        self._attr_extra_state_attributes: dict[str, Any] = {}
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
         last_sensor_data = await self.async_get_last_sensor_data()
+
         if last_sensor_data:
-            self._attr_native_value = last_sensor_data.native_value
-        if last_state:
+            # if the entity unit can be changed by a user it will be restored from last_sensor_data.native_value
             _LOGGER.debug(
-                "Restoring state for %s: %s",
+                "Restoring data for %s: %s",
                 self.sensor_details["id"],
-                last_state.attributes,
+                last_sensor_data,
             )
-            self._extra_state_attributes = dict(last_state.attributes)
-        #    self._attr_native_unit_of_measurement = last_state.attributes.get(
-        #        "unit_of_measurement"
-        #    )
-        else:
-            _LOGGER.debug("No previous state found for %s", self.sensor_details["id"])
-            self._extra_state_attributes = {}
+            self.set_state(last_sensor_data.native_value)
+        if last_state:
+            # _LOGGER.debug(last_state.attributes)
+            self._attr_extra_state_attributes = last_state.attributes.copy()
+            _LOGGER.debug(
+                "Restoring attributes for %s: %s",
+                self.sensor_details["id"],
+                self._attr_extra_state_attributes,
+            )
+            if self.sensor_details["id"] in {"usageCounter", "usageCounterQuantity"}:
+                # if the entites unit can not be changed by a user it will be restores from last_state.state
+                if (
+                    "Current Value" not in self._attr_extra_state_attributes
+                    or not isinstance(
+                        self._attr_extra_state_attributes["Current Value"], int
+                    )
+                ):
+                    _LOGGER.debug(
+                        "Current Value is None for %s, setting it to zero",
+                        self.sensor_details["id"],
+                    )
+                    self._attr_extra_state_attributes["Current Value"] = 0
+                if (
+                    "Previous Value" not in self._attr_extra_state_attributes
+                    or not isinstance(
+                        self._attr_extra_state_attributes["Previous Value"], int
+                    )
+                ):
+                    _LOGGER.debug(
+                        "Previous Value is None for %s, setting it to zero",
+                        self.sensor_details["id"],
+                    )
+                    self._attr_extra_state_attributes["Previous Value"] = 0
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -264,15 +289,48 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
                 self.set_api_response(oilfox_device)
                 if self.sensor_details["api"] in oilfox_device:
                     self.set_state(oilfox_device[self.sensor_details["api"]])
-                    self._extra_state_attributes = {
+                    self._attr_extra_state_attributes = {
                         "Last Measurement": self.api_response.get("currentMeteringAt"),
                         "Next Measurement": self.api_response.get("nextMeteringAt"),
                         "Battery": self.api_response.get("batteryLevel"),
                     }
+                    self.async_write_ha_state()
                 elif self.sensor_details["id"] == "validationError":
-                    self._attr_native_value = "No Error"
-                self.async_write_ha_state()
-                return
+                    self.set_state("No Error")
+                elif self.sensor_details["id"] in [
+                    "usageCounterQuantity",
+                    "usageCounter",
+                ]:
+                    current_value = self._attr_extra_state_attributes["Current Value"]
+                    fillLevelQuantity = self.api_response.get("fillLevelQuantity")
+                    if current_value != fillLevelQuantity:
+                        if fillLevelQuantity < current_value:
+                            if self.sensor_details["id"] == "usageCounterQuantity":
+                                new_value = self._attr_native_value + (
+                                    current_value - fillLevelQuantity
+                                )
+                            elif self.sensor_details["id"] == "usageCounter":
+                                new_value = round(
+                                    self._attr_native_value
+                                    + (
+                                        (current_value - fillLevelQuantity)
+                                        * KWH_PER_L_OIL
+                                    ),
+                                    2,
+                                )
+                            self.set_state(new_value)
+                        self._attr_extra_state_attributes["Previous Value"] = (
+                            self._attr_extra_state_attributes["Current Value"]
+                        )
+                        self._attr_extra_state_attributes["Current Value"] = (
+                            fillLevelQuantity
+                        )
+                        self.async_write_ha_state()
+                    else:
+                        _LOGGER.debug(
+                            "Current Value and fillLevelQuantity are the same for %s, skip",
+                            self.sensor_details["id"],
+                        )
 
     def set_api_response(self, response: dict) -> None:
         """Set API response manually."""
@@ -281,19 +339,19 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
     def set_state(self, state: str | float | None) -> None:
         """Set state manually."""
         if (
-            state == self._attr_native_value
+            state == self.native_value
             or (
                 self.sensor_details["api"] == "batteryLevel"
-                and self._attr_native_value == self.battery_mapping.get(state, None)
+                and self.native_value == self.battery_mapping.get(state, None)
             )
             or (
                 self.sensor_details["api"] in {"currentMeteringAt", "nextMeteringAt"}
-                and self._attr_native_value == datetime.fromisoformat(state)
+                and self.native_value == datetime.fromisoformat(str(state))
             )
         ):
             _LOGGER.debug(
                 "Old and new state (%s) for sensor %s same, skip",
-                self._attr_native_value,
+                state,
                 self.sensor_details["id"],
             )
             return
@@ -301,17 +359,12 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor):
             if self.sensor_details["api"] == "batteryLevel":
                 self._attr_native_value = self.battery_mapping.get(state, None)
             elif self.sensor_details["api"] in {"currentMeteringAt", "nextMeteringAt"}:
-                self._attr_native_value = datetime.fromisoformat(state)
+                self._attr_native_value = datetime.fromisoformat(str(state))
             else:
                 self._attr_native_value = state
             _LOGGER.debug(
                 "Set new state %s for sensor %s", state, self.sensor_details["id"]
             )
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Get extra attributes."""
-        return self._extra_state_attributes
 
     @property
     def device_info(self) -> DeviceInfo:

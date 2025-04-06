@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -98,6 +99,7 @@ async def async_setup_entry(
 
             oilfox_binary_sensor.set_api_response(oilfox_device)
 
+            # Prefill sensor state based on the device data
             if sensor_key == "batteryLevelStatus":
                 state = oilfox_device[sensor_details["api"]] in {"WARNING", "CRITICAL"}
             elif sensor_key == "validationErrorStatus":
@@ -136,12 +138,14 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = sensor_details["icon"]
         # self._attr_native_unit_of_measurement = sensor_details["native_unit"]
         # self._attr_suggested_unit_of_measurement = sensor_details["suggested_unit"]
-        self._extra_state_attributes = {}
+        self._attr_extra_state_attributes: dict[str, Any] = {}
         self._attr_is_on = False
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
+
+        # ToDo - restore old states
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -178,11 +182,6 @@ class OilFoxBinarySensor(CoordinatorEntity, BinarySensorEntity):
                 "Set new state %s for sensor %s", state, self.sensor_details["id"]
             )
             self._attr_is_on = state
-
-    @property
-    def extra_state_attributes(self):
-        """Get extra Attribute."""
-        return self._extra_state_attributes
 
     @property
     def device_info(self) -> DeviceInfo:
