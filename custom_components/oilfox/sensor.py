@@ -114,7 +114,7 @@ SENSORS = {
         "icon": "mdi:barrel",
         "name": "energyConsumption",
         "device_class": SensorDeviceClass.ENERGY,
-        "state_class": None,
+        "state_class": SensorStateClass.TOTAL,
     },
     "usageCounterQuantity": {
         "id": "usageCounterQuantity",
@@ -124,7 +124,7 @@ SENSORS = {
         "icon": "mdi:barrel-outline",
         "name": "usageCounterQuantity",
         "device_class": SensorDeviceClass.VOLUME_STORAGE,
-        "state_class": None,
+        "state_class": SensorStateClass.MEASUREMENT,
     },
 }
 
@@ -238,25 +238,45 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor, SensorEntity):
         await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
         last_sensor_data = await self.async_get_last_sensor_data()
-
-        if last_sensor_data:
-            # if the entity unit can be changed by a user it will be restored from last_sensor_data.native_value
-            _LOGGER.debug(
-                "Restoring data for %s: %s",
-                self.sensor_details["id"],
-                last_sensor_data,
-            )
-            self.set_state(last_sensor_data.native_value)
         if last_state:
-            # _LOGGER.debug(last_state.attributes)
-            self._attr_extra_state_attributes = last_state.attributes.copy()
-            _LOGGER.debug(
-                "Restoring attributes for %s: %s",
-                self.sensor_details["id"],
-                self._attr_extra_state_attributes,
-            )
             if self.sensor_details["id"] in {"usageCounter", "usageCounterQuantity"}:
-                # if the entites unit can not be changed by a user it will be restores from last_state.state
+                self._attr_extra_state_attributes = last_state.attributes.copy()
+                _LOGGER.debug(
+                    "Restoring attributes (state: %s) for %s: %s",
+                    last_state.state,
+                    self.sensor_details["id"],
+                    self._attr_extra_state_attributes,
+                )
+                # Workaround for the issue that the state is not restored correctly
+                # happened in BETA Update
+                if "restore_value" in self._attr_extra_state_attributes:
+                    _LOGGER.info(
+                        "Recover value: %s for %s from user attribute",
+                        self._attr_extra_state_attributes["restore_value"],
+                        self.sensor_details["id"],
+                    )
+                    self.set_state(
+                        self._attr_extra_state_attributes.pop("restore_value")
+                    )
+                elif (
+                    last_sensor_data is None
+                    or last_sensor_data.native_value is None
+                    or last_sensor_data.native_value == 0
+                ):
+                    if last_state.state != "unknown" and float(last_state.state) > 0:
+                        self.set_state(last_state.state)
+                        _LOGGER.debug(
+                            "Restored %s value %s from state",
+                            self.sensor_details["id"],
+                            last_state.state,
+                        )
+                    else:
+                        self.set_state(0)
+                # End Workaround
+                else:
+                    # _LOGGER.error("Native Value:%s", last_sensor_data.native_value)
+                    self.set_state(last_sensor_data.native_value)
+
                 if (
                     "Current Value" not in self._attr_extra_state_attributes
                     or not isinstance(
@@ -301,17 +321,22 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor, SensorEntity):
                     "usageCounterQuantity",
                     "usageCounter",
                 ]:
-                    current_value = self._attr_extra_state_attributes["Current Value"]
-                    fillLevelQuantity = self.api_response.get("fillLevelQuantity")
+                    current_value = int(
+                        self._attr_extra_state_attributes["Current Value"]
+                    )
+                    fillLevelQuantity = int(self.api_response.get("fillLevelQuantity"))
                     if current_value != fillLevelQuantity:
                         if fillLevelQuantity < current_value:
+                            new_value = 0
                             if self.sensor_details["id"] == "usageCounterQuantity":
-                                new_value = self._attr_native_value + (
-                                    current_value - fillLevelQuantity
+                                new_value = round(
+                                    float(self._attr_native_value)
+                                    + (current_value - fillLevelQuantity),
+                                    2,
                                 )
                             elif self.sensor_details["id"] == "usageCounter":
                                 new_value = round(
-                                    self._attr_native_value
+                                    float(self._attr_native_value)
                                     + (
                                         (current_value - fillLevelQuantity)
                                         * KWH_PER_L_OIL
