@@ -25,10 +25,6 @@ from .OilFox import OilFox
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {vol.Required(CONF_EMAIL): str, vol.Required(CONF_PASSWORD): str}
-)
-
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
@@ -39,12 +35,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     my_oilfox = OilFox(data[CONF_EMAIL], data[CONF_PASSWORD], "")
 
     if not await my_oilfox.test_connection():
-        _LOGGER.info("Tests for OilFox: Connection failed")
+        _LOGGER.error("Tests for OilFox: Connection failed")
         raise CannotConnect
     _LOGGER.debug("Tests for OilFox: Connection successful")
 
     if not await my_oilfox.test_authentication():
-        _LOGGER.info("Tests for OilFox: Authentication failed")
+        _LOGGER.error("Tests for OilFox: Authentication failed")
         raise InvalidAuth
     _LOGGER.debug("Tests for OilFox: Authentication successful")
 
@@ -60,6 +56,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        STEP_USER_DATA_SCHEMA = vol.Schema(
+            {vol.Required(CONF_EMAIL): str, vol.Required(CONF_PASSWORD): str}
+        )
         if user_input is None:
             return self.async_show_form(
                 step_id="user", data_schema=STEP_USER_DATA_SCHEMA
@@ -86,6 +85,44 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        # Hole die gespeicherte E-Mail-Adresse aus der Konfigurationsinstanz
+        entry = self._get_reconfigure_entry()
+        STEP_USER_DATA_SCHEMA = vol.Schema(
+            {
+                vol.Required(CONF_EMAIL, default=entry.data.get(CONF_EMAIL)): str,
+                vol.Required(CONF_PASSWORD, default=entry.data.get(CONF_PASSWORD)): str,
+            }
+        )
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reconfigure", data_schema=STEP_USER_DATA_SCHEMA
+            )
+
+        errors = {}
+        _LOGGER.info("Configure Account: %s", user_input[CONF_EMAIL])
+        await self.async_set_unique_id(user_input[CONF_EMAIL])
+        self._abort_if_unique_id_mismatch()
+        try:
+            await validate_input(self.hass, user_input)
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return self.async_update_reload_and_abort(
+                self._get_reconfigure_entry(),
+                data_updates=user_input,
+            )
+
+        # Show the form again with errors if validation failed
+        return self.async_show_form(
+            step_id="reconfigure", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
     async def async_step_import(
@@ -126,7 +163,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         timeout = TIMEOUT
         poll_interval = POLL_INTERVAL
         if user_input is not None:
-            # _LOGGER.info("Option Flow 2:%s", repr(user_input))
             return self.async_create_entry(title="", data=user_input)
 
         if CONF_HTTP_TIMEOUT in self.options:
