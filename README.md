@@ -69,7 +69,21 @@ DISTANCE_TOO_SHORT = Measured distance too small
 ABOVE_STORAGE_MAX = Storage full
 BELOW_STORAGE_MIN = Calculated filling level implausible
 ```
+## Fill level in cm
+The fill level in cm is not available in the API, the oil tank height is not available, too. So the best way to get the current fill level in cm is to create a Template Helper
+- navigate to Settings
+- select devices and services
+- select helper in the top bar
+- select create helper at the bottom
+- select template and in the next screen select number
+Use the following Template:
+```{{ ((<oil tank height>) / 100) * states('sensor.<oilfox device>_filllevelpercent') | float(0)) | round(1) }}```
+Here is the template that is working with my oilfox device and oil tank:
+```{{ ((190) / 100) * states('sensor.oilfox_on0422501780_filllevelpercent') | float(0)) | round(1) }}```
 
+Example:
+
+<img width="451" height="1125" alt="image" src="https://github.com/user-attachments/assets/57e482f2-5168-400d-b631-dde2bc8667aa" />
 
 ## Background
 This component is using the official [OilFox customer Api](https://github.com/foxinsights/customer-api)
