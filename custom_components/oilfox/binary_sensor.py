@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 from typing import Any
 
@@ -19,12 +18,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_EMAIL,
-    CONF_HTTP_TIMEOUT,
     CONF_PASSWORD,
-    CONF_POLL_INTERVAL,
     DOMAIN,
-    POLL_INTERVAL,
-    TIMEOUT,
 )
 from .OilFox import OilFox
 
@@ -55,18 +50,10 @@ async def async_setup_entry(
 ) -> None:
     """Initialize OilFox Integration config entry."""
 
-    _LOGGER.info("OilFox: Setup User: %s", config_entry.data[CONF_EMAIL])
     email = config_entry.data[CONF_EMAIL]
     password = config_entry.data[CONF_PASSWORD]
 
-    timeout = config_entry.options.get(CONF_HTTP_TIMEOUT, TIMEOUT)
-    _LOGGER.info("Timeout value: %s", timeout)
-
-    poll_interval = config_entry.options.get(CONF_POLL_INTERVAL, POLL_INTERVAL)
-    _LOGGER.info("Poll interval: %s", poll_interval)
-
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    coordinator.update_interval = timedelta(minutes=poll_interval)
     _LOGGER.debug("OilFox Coordinator Data Result: %s", repr(coordinator.data))
 
     if coordinator.data is None or coordinator.data is False:
@@ -78,7 +65,7 @@ async def async_setup_entry(
     entities = []
 
     for oilfox_device in oilfox_devices:
-        _LOGGER.info("OilFox: Found Device in API: %s", oilfox_device["hwid"])
+        _LOGGER.debug("OilFox: Found Device in API: %s", oilfox_device["hwid"])
         for sensor_key, sensor_details in BINARY_SENSORS.items():
             _LOGGER.info(
                 "OilFox: Create Sensor %s for Device %s",
@@ -91,8 +78,6 @@ async def async_setup_entry(
                     email,
                     password,
                     oilfox_device["hwid"],
-                    timeout=timeout,
-                    poll_interval=poll_interval,
                 ),
                 sensor_details,
             )

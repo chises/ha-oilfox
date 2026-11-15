@@ -21,6 +21,7 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
         hass: HomeAssistant,
         *,
         oilfox_api: OilFox,
+        poll_interval: int = POLL_INTERVAL,
     ) -> None:
         """Initialize global OilFox data updater."""
         self.oilfox_api = oilfox_api
@@ -31,7 +32,7 @@ class UpdateCoordinator(update_coordinator.DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=POLL_INTERVAL),
+            update_interval=timedelta(minutes=poll_interval),
         )
 
     async def _async_update_data(self) -> None:
