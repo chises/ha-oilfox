@@ -321,6 +321,13 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor, SensorEntity):
                     "usageCounterQuantity",
                     "usageCounter",
                 ]:
+                    if self.api_response.get("fillLevelQuantity") is None:
+                        # e.g. while the device reports a validationError
+                        _LOGGER.debug(
+                            "No fillLevelQuantity in API response for %s, skip",
+                            self.sensor_details["id"],
+                        )
+                        return
                     current_value = int(
                         self._attr_extra_state_attributes["Current Value"]
                     )
