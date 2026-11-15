@@ -328,6 +328,16 @@ class OilFoxSensor(CoordinatorEntity, RestoreSensor, SensorEntity):
                             self.sensor_details["id"],
                         )
                         return
+                    if not isinstance(
+                        self._attr_extra_state_attributes.get("Current Value"), int
+                    ):
+                        # new entity without restored state: start counting from
+                        # the current fill level instead of raising a KeyError
+                        fill_level = int(self.api_response["fillLevelQuantity"])
+                        self._attr_extra_state_attributes["Current Value"] = fill_level
+                        self._attr_extra_state_attributes["Previous Value"] = fill_level
+                        self.async_write_ha_state()
+                        return
                     current_value = int(
                         self._attr_extra_state_attributes["Current Value"]
                     )
